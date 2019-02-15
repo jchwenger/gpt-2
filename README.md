@@ -1,4 +1,8 @@
-# gpt-2
+# gpt-2 Commented
+
+Reading through & making sense of the newly released model by [OpenAI]("https://openai.com/").
+
+---
 
 Code and samples from the paper ["Language Models are Unsupervised Multitask Learners"](https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf).
 
