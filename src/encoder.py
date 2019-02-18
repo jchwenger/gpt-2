@@ -3,12 +3,11 @@
 import os
 import json
 import regex as re
-from functools import lru_cache """
-                                Functools: module for higher order functions (functions calling other functions)
-                                lru_cache: (Python docs) Decorator to wrap a function with a memoizing callable 
-                                that saves up to the maxsize most recent calls. It can save time when an expensive
-                                or I/O bound function is periodically called with the same arguments.
-                                """
+from functools import lru_cache 
+    # Functools: module for higher order functions (functions calling other functions)
+    # lru_cache: (Python docs) Decorator to wrap a function with a memoizing callable 
+    # that saves up to the maxsize most recent calls. It can save time when an expensive
+    # or I/O bound function is periodically called with the same arguments. 
 
 @lru_cache()
 def bytes_to_unicode():
@@ -81,7 +80,8 @@ class Encoder:
                             #          preceded by optional space, all this one or more times
                             # no single space: one or more spaces not followed non-whitespace, negative lookahead: (?!\S) 
                             # one or more spaces ok
-        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""", flags=re.IGNORECASE)
+                                                                                                                # adding ignorecase, as mentioned above
 
     def bpe(self, token):
 
@@ -137,10 +137,7 @@ class Encoder:
         bpe_tokens = []                                 
         
         # for each token found by our regex (words, numbers, more than one space, punctuation)
-
-        # for token in re.findall(self.pat, text):     
-        for token in re.findall(self.pat, text, flags=re.IGNORECASE):
-                                                    # adding ignorecase, as mentioned above
+        for token in re.findall(self.pat, text):     
 
             # encode to utf-8 (char > int), then encode to byte, then join in a string
             token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
