@@ -9,14 +9,14 @@ import tensorflow as tf
 import model, sample, encoder
 
 def sample_model(
-    model_name='117M',
-    seed=None,
-    nsamples=0,
-    batch_size=1,
-    length=None,
-    temperature=1,
-    top_k=0,
-):
+        model_name='117M',
+        seed=None,
+        nsamples=0,
+        batch_size=1,
+        length=None,
+        temperature=1,
+        top_k=0):
+
     np.random.seed(seed)
     tf.set_random_seed(seed)
 
