@@ -1,4 +1,9 @@
+*.ipynb_checkpoints
 __pycache__
+
 models/
+
+# Vim tmp files
+*.swo
 *.swp
 
