@@ -2,7 +2,9 @@
 
 ## Comments & study & much TF fiddling
 
-Reading through & making sense of the newly released model by [OpenAI]("https://openai.com/").
+Reading through & making sense of the newly released model by [OpenAI]("https://openai.com/").  
+
+Many comments in the code, as well as [this Jupyter notebook](https://github.com/jchwenger/gpt-2/blob/comments/study/GPT-2_study.ipynb).  
 
 ---
 
