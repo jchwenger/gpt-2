@@ -1,4 +1,6 @@
-# gpt-2 Commented
+# gpt-2 
+
+## Comments & study & much TF fiddling
 
 Reading through & making sense of the newly released model by [OpenAI]("https://openai.com/").
 
