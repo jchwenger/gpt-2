@@ -23,27 +23,45 @@ def softmax(x, axis=-1):
     return ex / tf.reduce_sum(ex, axis=axis, keepdims=True)
 
 def gelu(x):
+    """ 
+    See this paper (Gaussian Error Linear Units): https://arxiv.org/pdf/1606.08415.pdf
+    And this discussion: https://datascience.stackexchange.com/questions/49522/what-is-gelu-activation     
+    """
     return 0.5*x*(1+tf.tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x, 3))))
 
 def norm(x, scope, *, axis=-1, epsilon=1e-5):
-    """Normalize to mean = 0, std = 1, then do a diagonal affine transform."""
+    """
+    Normalize to mean = 0, std = 1, then do a diagonal affine transform.
+    As a result, not only will the data be centered around 0 with stddev=1,
+    but the various dimensions/features will be on the same scale (and not
+    one going to 1000, the other one between 0 and 1, etc.). See:
+    https://www.youtube.com/watch?v=FDCfw-YqWTE&list=PLkDaE6sCZn6Hn0vK8co82zjQtt3T2Nkqc&index=9
+    """
     with tf.variable_scope(scope):
-        n_state = x.shape[-1].value
+        n_state = x.shape[-1].value # innermost dim
+        # scale & shift factors (trainable)
         g = tf.get_variable('g', [n_state], initializer=tf.constant_initializer(1))
         b = tf.get_variable('b', [n_state], initializer=tf.constant_initializer(0))
-        u = tf.reduce_mean(x, axis=axis, keepdims=True)
-        s = tf.reduce_mean(tf.square(x-u), axis=axis, keepdims=True)
-        x = (x - u) * tf.rsqrt(s + epsilon)
-        x = x*g + b
+        u = tf.reduce_mean(x, axis=axis, keepdims=True) # absolute mean
+        s = tf.reduce_mean(tf.square(x-u), axis=axis, keepdims=True) # variance
+        x = (x - u) * tf.rsqrt(s + epsilon) # normalize
+        x = x*g + b # scale & shift
         return x
 
 def split_states(x, n):
-    """Reshape the last dimension of x into [n, x.shape[-1]/n]."""
+    """
+    Reshape the last dimension of x into [n, x.shape[-1]/n].
+    From e.g. [[1,2,3,4],      to  [[[1,2],[3,4]],
+               [5,6,7,8]]           [[5,6],[7,8]]]
+    """
     *start, m = shape_list(x)
     return tf.reshape(x, start + [n, m//n])
 
 def merge_states(x):
-    """Smash the last two dimensions of x into a single dimension."""
+    """
+    Smash the last two dimensions of x into a single dimension.
+    (The reverse operation from above, going back to original tensor.)
+    """
     *start, a, b = shape_list(x)
     return tf.reshape(x, start + [a*b])
 
