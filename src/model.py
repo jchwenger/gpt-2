@@ -91,14 +91,16 @@ def conv1d(x, scope, nf, *, w_init_stdev=0.02):
         return c
 
 def attention_mask(nd, ns, *, dtype):
-    """1's in the lower triangle, counting from the lower right corner.
+    """
+    1's in the lower triangle, counting from the lower right corner.
 
     Same as tf.matrix_band_part(tf.ones([nd, ns]), -1, ns-nd), but doesn't produce garbage on TPUs.
+    In fact same as tf.matrix_band_part(tf.ones([nd, ns]), -1, 0)
     """
-    i = tf.range(nd)[:,None]
-    j = tf.range(ns)
-    m = i >= j - ns + nd
-    return tf.cast(m, dtype)
+    i = tf.range(nd)[:,None] # 'vertical' vector, using None as shorthand for tf.newaxis
+    j = tf.range(ns)         # 'horizontal one, that will be 'shifted to the left' (from [0,1,2] to [-3, -2,-1]
+    m = i >= j - ns + nd     # check for equivalence using numpy broadcasting > matrix filled with booleans
+    return tf.cast(m, dtype) # convert boolean values to 0s & 1s
 
 
 def attn(x, scope, n_state, *, past, hparams):
