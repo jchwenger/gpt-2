@@ -66,11 +66,28 @@ def merge_states(x):
     return tf.reshape(x, start + [a*b])
 
 def conv1d(x, scope, nf, *, w_init_stdev=0.02):
+    """
+    x of shape e.g. [10,4,3,5], result c of shape [10,4,3,nf].
+    Part of the Transformer architecture — its use in the mlp() fn below
+    confirms that this is the feedforward network described here:
+    http://nlp.seas.harvard.edu/2018/04/03/attention.html#position-wise-feed-forward-networks
+    """
     with tf.variable_scope(scope):
-        *start, nx = shape_list(x)
+        *start, nx = shape_list(x) # innermost dim 
+
+        # Weight & bias to be trained
         w = tf.get_variable('w', [1, nx, nf], initializer=tf.random_normal_initializer(stddev=w_init_stdev))
         b = tf.get_variable('b', [nf], initializer=tf.constant_initializer(0))
-        c = tf.reshape(tf.matmul(tf.reshape(x, [-1, nx]), tf.reshape(w, [-1, nf]))+b, start+[nf])
+
+        # Reshape x & w so that compatible, then
+        # x * w + b (linear)
+        # Reshape result back to include external dimension of x
+        c = tf.reshape(
+                tf.matmul(tf.reshape(x, [-1, nx]), # flatten & keep only innermost dim 
+                          tf.reshape(w, [-1, nf])  # always [nx, nf]
+                         )+b,                       
+                start+[nf])
+
         return c
 
 def attention_mask(nd, ns, *, dtype):
@@ -131,6 +148,10 @@ def attn(x, scope, n_state, *, past, hparams):
 
 
 def mlp(x, scope, n_state, *, hparams):
+    """
+    Transformer: feed-forward then nonlinearity then feed-forward
+    conv1d(gelu(conv1d(x))
+    """
     with tf.variable_scope(scope):
         nx = x.shape[-1].value
         h = gelu(conv1d(x, 'c_fc', n_state))
