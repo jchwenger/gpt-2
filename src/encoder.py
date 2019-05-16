@@ -5,7 +5,7 @@ import json
 import regex as re
 from functools import lru_cache 
     # Functools: module for higher order functions (functions calling other functions)
-    # lru_cache: (Python docs) Decorator to wrap a function with a memoizing callable 
+    # lru_cache: (Python docs) Decorator to wrap a function with a memorizing callable 
     # that saves up to the maxsize most recent calls. It can save time when an expensive
     # or I/O bound function is periodically called with the same arguments. 
 
