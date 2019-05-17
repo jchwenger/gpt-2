@@ -101,7 +101,7 @@ def attention_mask(nd, ns, *, dtype):
     1's in the lower triangle, counting from the lower right corner.
 
     Same as tf.matrix_band_part(tf.ones([nd, ns]), -1, ns-nd), but doesn't produce garbage on TPUs.
-    In fact same as tf.matrix_band_part(tf.ones([nd, ns]), -1, 0)
+    In fact tf.matrix_band_part() counts from the upper left corner! (Same as np.triu/tril.)
     """
     i = tf.range(nd)[:,None] # 'vertical' vector, using None as shorthand for tf.newaxis
     j = tf.range(ns)         # 'horizontal one, that will be 'shifted to the left' (from [0,1,2] to [-3, -2,-1]
@@ -110,48 +110,81 @@ def attention_mask(nd, ns, *, dtype):
 
 
 def attn(x, scope, n_state, *, past, hparams):
-    assert x.shape.ndims == 3  # Should be [batch, sequence, features]
-    assert n_state % hparams.n_head == 0
+
+    assert x.shape.ndims == 3            # Should be [batch, sequence, features]
+    assert n_state % hparams.n_head == 0 # n_state == innermost dimension of x,
+                                         # required when dividing that by n_head in 
+                                         # split_states below
+
     if past is not None:
         assert past.shape.ndims == 5  # Should be [batch, 2, heads, sequence, features], where 2 is [k, v]
 
     def split_heads(x):
         # From [batch, sequence, features] to [batch, heads, sequence, features]
+        # (via [batch, sequence, heads, features] thanks to split_states)
         return tf.transpose(split_states(x, hparams.n_head), [0, 2, 1, 3])
 
     def merge_heads(x):
         # Reverse of split_heads
+        # transpose from [batch, heads, sequence, features] back to [batch, sequence, heads, features]
+        # then merge_states: merge last two dims [heads, features] into one
         return merge_states(tf.transpose(x, [0, 2, 1, 3]))
 
     def mask_attn_weights(w):
         # w has shape [batch, heads, dst_sequence, src_sequence], where information flows from src to dst.
-        _, _, nd, ns = shape_list(w)
-        b = attention_mask(nd, ns, dtype=w.dtype)
-        b = tf.reshape(b, [1, 1, nd, ns])
-        w = w*b - tf.cast(1e10, w.dtype)*(1-b)
-        return w
+        *_, nd, ns = shape_list(w) # <3 * operator
+        b = attention_mask(nd, ns, dtype=w.dtype) # tensor with 1s in the lower triangle
+        b = tf.reshape(b, [1, 1, nd, ns])         # make it compatible with w by adding external dims
+        w = w*b - tf.cast(1e10, w.dtype)*(1-b)    # swap zeroes & ones (1-b), replace ones by large 
+                                                  # numbers 1e10, and subtract: # -1e10 will produce 
+        return w                                  # 0 on the softmax (applied to the returned w)
+        
 
     def multihead_attn(q, k, v):
-        # q, k, v have shape [batch, heads, sequence, features]
+        """
+        Formula: (softmax(Q*Ktranspose)/sqrt(dv))*V
+        dv: scaling factor, as countereffect to dot-product attention, faster & more space-efficient than 
+        additive attention, growing in magnitude for larger dv values (which pushes softmax to zero)
+        """
+        # dot-prod, q, k, v have shape [batch, heads, sequence, features]
         w = tf.matmul(q, k, transpose_b=True)
-        w = w * tf.rsqrt(tf.cast(v.shape[-1].value, w.dtype))
 
+        # scaling
+        dv = tf.cast(v.shape[-1].value, w.dtype) # take the innermost dim of v, then
+        w = w * tf.rsqrt(dv)                     # divide w by the square root of it
+                                                 # (in paper called dk == dv == dmodel//n_heads)
+
+        # mask: ignore past positions
         w = mask_attn_weights(w)
+
+        # softmax & dot-prod
         w = softmax(w)
         a = tf.matmul(w, v)
+
         return a
 
     with tf.variable_scope(scope):
-        c = conv1d(x, 'c_attn', n_state*3)
+
+        # linear layer, x is [batch, sequence, features], n_state == x.shape[-1].value
+        c = conv1d(x, 'c_attn', n_state*3) # *3 so you can split it into 3 just below
+        
+        # split into heads for parallelized action, c is [batch, sequence, features*3]
+        # q, k & v are [batch, heads, sequence, features]
         q, k, v = map(split_heads, tf.split(c, 3, axis=2))
+
+        # present: [k, v] in one vector, as is past
         present = tf.stack([k, v], axis=1)
         if past is not None:
-            pk, pv = tf.unstack(past, axis=1)
-            k = tf.concat([pk, k], axis=-2)
-            v = tf.concat([pv, v], axis=-2)
+            pk, pv = tf.unstack(past, axis=1) # retrieve past k & v
+            k = tf.concat([pk, k], axis=-2)   # add present k to pk
+            v = tf.concat([pv, v], axis=-2)   # same for v to pv
+
         a = multihead_attn(q, k, v)
+
+        # remerge & linear
         a = merge_heads(a)
-        a = conv1d(a, 'c_proj', n_state)
+        a = conv1d(a, 'c_proj', n_state) # n_state == x.shape[-1].value
+
         return a, present
 
 
