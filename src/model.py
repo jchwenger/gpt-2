@@ -190,7 +190,7 @@ def attn(x, scope, n_state, *, past, hparams):
 
 def mlp(x, scope, n_state, *, hparams):
     """
-    Transformer: feed-forward then nonlinearity then feed-forward
+    Transformer (inside block)s: feed-forward then nonlinearity then feed-forward
     conv1d(gelu(conv1d(x))
     """
     with tf.variable_scope(scope):
@@ -199,23 +199,50 @@ def mlp(x, scope, n_state, *, hparams):
         h2 = conv1d(h, 'c_proj', nx)
         return h2
 
-
 def block(x, scope, *, past, hparams):
+    """
+    Transformer: norm+attention then norm+linear
+    """
     with tf.variable_scope(scope):
+
+        # norm then attention
         nx = x.shape[-1].value
-        a, present = attn(norm(x, 'ln_1'), 'attn', nx, past=past, hparams=hparams)
+        a, present = attn(norm(x, 'ln_1'), 
+                          'attn', 
+                          nx, 
+                          past=past, 
+                          hparams=hparams)
+        # add
         x = x + a
-        m = mlp(norm(x, 'ln_2'), 'mlp', nx*4, hparams=hparams)
+        
+        # norm then linear
+        m = mlp(norm(x, 'ln_2'), 
+                'mlp', 
+                nx*4, 
+                hparams=hparams)
+        # add
         x = x + m
+
         return x, present
 
+# Use * in args to prevent any positional argument being used
 def past_shape(*, hparams, batch_size=None, sequence=None):
+    """
+    Used in sample.py, sample_sequence() to shape presents, & body() >
+    while_loop to retrieve the same shape 
+    """
     return [batch_size, hparams.n_layer, 2, hparams.n_head, sequence, hparams.n_embd // hparams.n_head]
 
 def expand_tile(value, size):
-    """Add a new axis of given size."""
+    """
+    Tile (duplicate) tensor size times: from [x,y] to [[x,y],[x,y] .. size times .. [x,y]]
+    Constructed so as to be able to take lists, tuples, etc. as input.
+    """
     value = tf.convert_to_tensor(value, name='value')
     ndims = value.shape.ndims
+
+    # expand [x,y] to [[x,y]], then tile [size] times according to the outer dim
+    # ([size] + [1]*ndims turning into e.g. [3,1,1])
     return tf.tile(tf.expand_dims(value, axis=0), [size] + [1]*ndims)
 
 def positions_for(tokens, past_length):
@@ -225,6 +252,7 @@ def positions_for(tokens, past_length):
 
 
 def model(hparams, X, past=None, scope='model', reuse=False):
+
     with tf.variable_scope(scope, reuse=reuse):
         results = {}
         batch, sequence = shape_list(X)
