@@ -1,0 +1,75 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+Encoder	src/encoder.py	/^class Encoder:$/;"	c
+__init__	src/encoder.py	/^    def __init__(self, encoder, bpe_merges, errors='replace'):$/;"	m	class:Encoder
+_top_k	src/sample.py	/^    def _top_k():$/;"	f	function:top_k_logits
+attention_mask	src/model.py	/^def attention_mask(nd, ns, *, dtype):$/;"	f
+attn	src/model.py	/^def attn(x, scope, n_state, *, past, hparams):$/;"	f
+batch_size	src/generate_unconditional_samples.py	/^            batch_size=batch_size,$/;"	v
+batch_size	src/interactive_conditional_samples.py	/^            batch_size=batch_size,$/;"	v
+batch_size	src/interactive_conditional_samples.py	/^        batch_size = 1$/;"	v
+block	src/model.py	/^def block(x, scope, *, past, hparams):$/;"	f
+body	src/sample.py	/^        def body(past, prev, output):$/;"	f	function:sample_sequence.step
+bpe	src/encoder.py	/^    def bpe(self, token):$/;"	m	class:Encoder
+bytes_to_unicode	src/encoder.py	/^def bytes_to_unicode():$/;"	f
+chunk_size	download_model.py	/^        chunk_size = 1000$/;"	v
+ckpt	src/generate_unconditional_samples.py	/^        ckpt = tf.train.latest_checkpoint(os.path.join('models', model_name))$/;"	v
+ckpt	src/interactive_conditional_samples.py	/^        ckpt = tf.train.latest_checkpoint(os.path.join('models', model_name))$/;"	v
+cond	src/sample.py	/^        def cond(*args):$/;"	f	function:sample_sequence.step
+context	src/interactive_conditional_samples.py	/^            context=context,$/;"	v
+context	src/interactive_conditional_samples.py	/^        context = tf.placeholder(tf.int32, [batch_size, None])$/;"	v
+context_tokens	src/interactive_conditional_samples.py	/^            context_tokens = enc.encode(raw_text)$/;"	v
+conv1d	src/model.py	/^def conv1d(x, scope, nf, *, w_init_stdev=0.02):$/;"	f
+decode	src/encoder.py	/^    def decode(self, tokens):$/;"	m	class:Encoder
+default_hparams	src/model.py	/^def default_hparams():$/;"	f
+enc	src/generate_unconditional_samples.py	/^    enc = encoder.get_encoder(model_name)$/;"	v
+enc	src/interactive_conditional_samples.py	/^    enc = encoder.get_encoder(model_name)$/;"	v
+encode	src/encoder.py	/^    def encode(self, text):$/;"	m	class:Encoder
+expand_tile	src/model.py	/^def expand_tile(value, size):$/;"	f
+file_size	download_model.py	/^        file_size = int(r.headers["content-length"])$/;"	v
+gelu	src/model.py	/^def gelu(x):$/;"	f
+generated	src/generate_unconditional_samples.py	/^        generated = 0$/;"	v
+generated	src/interactive_conditional_samples.py	/^            generated = 0$/;"	v
+get_encoder	src/encoder.py	/^def get_encoder(model_name):$/;"	f
+get_pairs	src/encoder.py	/^def get_pairs(word):$/;"	f
+hparams	src/generate_unconditional_samples.py	/^    hparams = model.default_hparams()$/;"	v
+hparams	src/interactive_conditional_samples.py	/^    hparams = model.default_hparams()$/;"	v
+interact_model	src/interactive_conditional_samples.py	/^def interact_model($/;"	f
+length	src/generate_unconditional_samples.py	/^        length = hparams.n_ctx$/;"	v
+length	src/interactive_conditional_samples.py	/^        length = hparams.n_ctx \/\/ 2$/;"	v
+mask_attn_weights	src/model.py	/^    def mask_attn_weights(w):$/;"	f	function:attn
+merge_heads	src/model.py	/^    def merge_heads(x):$/;"	f	function:attn
+merge_states	src/model.py	/^def merge_states(x):$/;"	f
+mlp	src/model.py	/^def mlp(x, scope, n_state, *, hparams):$/;"	f
+model	download_model.py	/^model = sys.argv[1]$/;"	v
+model	src/model.py	/^def model(hparams, X, past=None, scope='model', reuse=False):$/;"	f
+multihead_attn	src/model.py	/^    def multihead_attn(q, k, v):$/;"	f	function:attn
+norm	src/model.py	/^def norm(x, scope, *, axis=-1, epsilon=1e-5):$/;"	f
+out	src/generate_unconditional_samples.py	/^            out = sess.run(output)$/;"	v
+out	src/interactive_conditional_samples.py	/^                out = sess.run(output, feed_dict={$/;"	v
+output	src/generate_unconditional_samples.py	/^        output = sample.sample_sequence($/;"	v
+output	src/interactive_conditional_samples.py	/^        output = sample.sample_sequence($/;"	v
+past_shape	src/model.py	/^def past_shape(*, hparams, batch_size=None, sequence=None):$/;"	f
+positions_for	src/model.py	/^def positions_for(tokens, past_length):$/;"	f
+r	download_model.py	/^    r = requests.get("https:\/\/storage.googleapis.com\/gpt-2\/" + subdir + "\/" + filename, stream=True)$/;"	v
+raw_text	src/interactive_conditional_samples.py	/^                raw_text = input("Model prompt >>> ")$/;"	v
+raw_text	src/interactive_conditional_samples.py	/^            raw_text = input("Model prompt >>> ")$/;"	v
+sample_model	src/generate_unconditional_samples.py	/^def sample_model($/;"	f
+sample_sequence	src/sample.py	/^def sample_sequence(*, $/;"	f
+saver	src/generate_unconditional_samples.py	/^        saver = tf.train.Saver()$/;"	v
+saver	src/interactive_conditional_samples.py	/^        saver = tf.train.Saver()$/;"	v
+shape_list	src/model.py	/^def shape_list(x):$/;"	f
+softmax	src/model.py	/^def softmax(x, axis=-1):$/;"	f
+split_heads	src/model.py	/^    def split_heads(x):$/;"	f	function:attn
+split_states	src/model.py	/^def split_states(x, n):$/;"	f
+start_token	src/generate_unconditional_samples.py	/^            start_token=enc.encoder['<|endoftext|>'],$/;"	v
+step	src/sample.py	/^    def step(hparams, tokens, past=None):$/;"	f	function:sample_sequence
+subdir	download_model.py	/^subdir = os.path.join('models', model)$/;"	v
+subdir	download_model.py	/^subdir = subdir.replace('\\\\','\/') # needed for Windows$/;"	v
+text	src/generate_unconditional_samples.py	/^                text = enc.decode(out[i])$/;"	v
+text	src/interactive_conditional_samples.py	/^                    text = enc.decode(out[i])$/;"	v
+top_k_logits	src/sample.py	/^def top_k_logits(logits, k):$/;"	f
