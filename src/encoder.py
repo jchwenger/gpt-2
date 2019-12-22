@@ -3,11 +3,11 @@
 import os
 import json
 import regex as re
-from functools import lru_cache 
+from functools import lru_cache
     # Functools: module for higher order functions (functions calling other functions)
-    # lru_cache: (Python docs) Decorator to wrap a function with a memorizing callable 
+    # lru_cache: (Python docs) Decorator to wrap a function with a memorizing callable
     # that saves up to the maxsize most recent calls. It can save time when an expensive
-    # or I/O bound function is periodically called with the same arguments. 
+    # or I/O bound function is periodically called with the same arguments.
 
 @lru_cache()
 def bytes_to_unicode():
@@ -21,7 +21,7 @@ def bytes_to_unicode():
     To avoid that, we want lookup tables between utf-8 bytes and unicode strings.
     And avoids mapping to whitespace/control characters the bpe code barfs on.
     """
-    
+
     # ord: returns integer corresponding to Unicode character
     bs = list(range(ord("!"), ord("~")+1))+list(range(ord("¡"), ord("¬")+1))+list(range(ord("®"), ord("ÿ")+1))
     cs = bs[:]
@@ -33,7 +33,7 @@ def bytes_to_unicode():
             cs.append(2**8+n)
             n += 1
 
-    # chr: returns string corresponding to Unicode integer code 
+    # chr: returns string corresponding to Unicode integer code
     # (of such and such character)
     # replace integer codes by their characters
     cs = [chr(n) for n in cs]
@@ -59,9 +59,9 @@ def get_pairs(word):
 class Encoder:
                                             # errors='replace'
                                             # an option for the bytearray() conversion function used below.
-                                            # cf Python doc: Replace with a suitable replacement marker; 
-                                            # Python will use the official U+FFFD REPLACEMENT CHARACTER 
-                                            # for the built-in codecs on decoding, and ‘?’ on encoding.  
+                                            # cf Python doc: Replace with a suitable replacement marker;
+                                            # Python will use the official U+FFFD REPLACEMENT CHARACTER
+                                            # for the built-in codecs on decoding, and ‘?’ on encoding.
     def __init__(self, encoder, bpe_merges, errors='replace'):
         self.encoder = encoder
         self.decoder = {v:k for k,v in self.encoder.items()}            # simply reversing from {k:v} to {v:k}
@@ -97,14 +97,14 @@ class Encoder:
             return token
 
         while True:
-                                                                            
+
             bigram = min(pairs, key = lambda pair: self.bpe_ranks.get(pair, float('inf')))
-                                                                            # float('inf'): It acts as an unbounded upper value for 
-            if bigram not in self.bpe_ranks:                                # comparison. This is useful for finding lowest 
-                break                                                       # values for something. 
+                                                                            # float('inf'): It acts as an unbounded upper value for
+            if bigram not in self.bpe_ranks:                                # comparison. This is useful for finding lowest
+                break                                                       # values for something.
                                                                             # https://stackoverflow.com/a/34264749
-            first, second = bigram                                          
-            new_word = []                                                   
+            first, second = bigram
+            new_word = []
 
             i = 0
             while i < len(word):
@@ -134,10 +134,10 @@ class Encoder:
 
     def encode(self, text):
 
-        bpe_tokens = []                                 
-        
+        bpe_tokens = []
+
         # for each token found by our regex (words, numbers, more than one space, punctuation)
-        for token in re.findall(self.pat, text):     
+        for token in re.findall(self.pat, text):
 
             # encode to utf-8 (char > int), then encode to byte, then join in a string
             token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
@@ -152,9 +152,11 @@ class Encoder:
         return text
 
 def get_encoder(model_name):
-    # get the vocabulary as a json file 
+
+    # get the vocabulary as a json file
     with open(os.path.join('models', model_name, 'encoder.json'), 'r') as f:
         encoder = json.load(f)
+
     # get the complete vocabulary as txt file
     with open(os.path.join('models', model_name, 'vocab.bpe'), 'r', encoding="utf-8") as f:
         bpe_data = f.read()

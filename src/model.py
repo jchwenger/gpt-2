@@ -23,9 +23,9 @@ def softmax(x, axis=-1):
     return ex / tf.reduce_sum(ex, axis=axis, keepdims=True)
 
 def gelu(x):
-    """ 
+    """
     See this paper (Gaussian Error Linear Units): https://arxiv.org/pdf/1606.08415.pdf
-    And this discussion: https://datascience.stackexchange.com/questions/49522/what-is-gelu-activation     
+    And this discussion: https://datascience.stackexchange.com/questions/49522/what-is-gelu-activation
     """
     return 0.5*x*(1+tf.tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x, 3))))
 
@@ -45,12 +45,12 @@ def norm(x, scope, *, axis=-1, epsilon=1e-5):
         b = tf.get_variable('b', [n_state], initializer=tf.constant_initializer(0))
 
         # absolute mean & variance
-        u = tf.reduce_mean(x, axis=axis, keepdims=True) 
-        s = tf.reduce_mean(tf.square(x-u), axis=axis, keepdims=True) 
+        u = tf.reduce_mean(x, axis=axis, keepdims=True)
+        s = tf.reduce_mean(tf.square(x-u), axis=axis, keepdims=True)
 
         # normalize then scale & shift
-        x = (x - u) * tf.rsqrt(s + epsilon) 
-        x = x*g + b 
+        x = (x - u) * tf.rsqrt(s + epsilon)
+        x = x*g + b
 
         return x
 
@@ -79,7 +79,7 @@ def conv1d(x, scope, nf, *, w_init_stdev=0.02):
     http://nlp.seas.harvard.edu/2018/04/03/attention.html#position-wise-feed-forward-networks
     """
     with tf.variable_scope(scope):
-        *start, nx = shape_list(x) # innermost dim 
+        *start, nx = shape_list(x) # innermost dim
 
         # Weight & bias to be trained
         w = tf.get_variable('w', [1, nx, nf], initializer=tf.random_normal_initializer(stddev=w_init_stdev))
@@ -89,9 +89,9 @@ def conv1d(x, scope, nf, *, w_init_stdev=0.02):
         # x * w + b (linear)
         # Reshape result back to include external dimension of x
         c = tf.reshape(
-                tf.matmul(tf.reshape(x, [-1, nx]), # flatten & keep only innermost dim 
+                tf.matmul(tf.reshape(x, [-1, nx]), # flatten & keep only innermost dim
                           tf.reshape(w, [-1, nf])  # always [nx, nf]
-                         )+b,                       
+                         )+b,
                 start+[nf])
 
         return c
@@ -99,7 +99,6 @@ def conv1d(x, scope, nf, *, w_init_stdev=0.02):
 def attention_mask(nd, ns, *, dtype):
     """
     1's in the lower triangle, counting from the lower right corner.
-
     Same as tf.matrix_band_part(tf.ones([nd, ns]), -1, ns-nd), but doesn't produce garbage on TPUs.
     In fact tf.matrix_band_part() counts from the upper left corner! (Same as np.triu/tril.)
     """
@@ -113,7 +112,7 @@ def attn(x, scope, n_state, *, past, hparams):
 
     assert x.shape.ndims == 3            # Should be [batch, sequence, features]
     assert n_state % hparams.n_head == 0 # n_state == innermost dimension of x,
-                                         # required when dividing that by n_head in 
+                                         # required when dividing that by n_head in
                                          # split_states below
 
     if past is not None:
@@ -135,15 +134,15 @@ def attn(x, scope, n_state, *, past, hparams):
         *_, nd, ns = shape_list(w) # <3 * operator
         b = attention_mask(nd, ns, dtype=w.dtype) # tensor with 1s in the lower triangle
         b = tf.reshape(b, [1, 1, nd, ns])         # make it compatible with w by adding external dims
-        w = w*b - tf.cast(1e10, w.dtype)*(1-b)    # swap zeroes & ones (1-b), replace ones by large 
-                                                  # numbers 1e10, and subtract: # -1e10 will produce 
+        w = w*b - tf.cast(1e10, w.dtype)*(1-b)    # swap zeroes & ones (1-b), replace ones by large
+                                                  # numbers 1e10, and subtract: # -1e10 will produce
         return w                                  # 0 on the softmax (applied to the returned w)
-        
+
 
     def multihead_attn(q, k, v):
         """
         Formula: (softmax(Q*Ktranspose)/sqrt(dv))*V
-        dv: scaling factor, as countereffect to dot-product attention, faster & more space-efficient than 
+        dv: scaling factor, as countereffect to dot-product attention, faster & more space-efficient than
         additive attention, growing in magnitude for larger dv values (which pushes softmax to zero)
         """
         # dot-prod, q, k, v have shape [batch, heads, sequence, features]
@@ -167,7 +166,7 @@ def attn(x, scope, n_state, *, past, hparams):
 
         # linear layer, x is [batch, sequence, features], n_state == x.shape[-1].value
         c = conv1d(x, 'c_attn', n_state*3) # *3 so you can split it into 3 just below
-        
+
         # split into heads for parallelized action, c is [batch, sequence, features*3]
         # q, k & v are [batch, heads, sequence, features]
         q, k, v = map(split_heads, tf.split(c, 3, axis=2))
@@ -207,18 +206,18 @@ def block(x, scope, *, past, hparams):
 
         # norm then attention
         nx = x.shape[-1].value
-        a, present = attn(norm(x, 'ln_1'), 
-                          'attn', 
-                          nx, 
-                          past=past, 
+        a, present = attn(norm(x, 'ln_1'),
+                          'attn',
+                          nx,
+                          past=past,
                           hparams=hparams)
         # add
         x = x + a
-        
+
         # norm then linear
-        m = mlp(norm(x, 'ln_2'), 
-                'mlp', 
-                nx*4, 
+        m = mlp(norm(x, 'ln_2'),
+                'mlp',
+                nx*4,
                 hparams=hparams)
         # add
         x = x + m
@@ -229,7 +228,7 @@ def block(x, scope, *, past, hparams):
 def past_shape(*, hparams, batch_size=None, sequence=None):
     """
     Used in sample.py, sample_sequence() to shape presents, & body() >
-    while_loop to retrieve the same shape 
+    while_loop to retrieve the same shape
     """
     return [batch_size, hparams.n_layer, 2, hparams.n_head, sequence, hparams.n_embd // hparams.n_head]
 
@@ -254,6 +253,7 @@ def positions_for(tokens, past_length):
 def model(hparams, X, past=None, scope='model', reuse=False):
 
     with tf.variable_scope(scope, reuse=reuse):
+
         results = {}
         batch, sequence = shape_list(X)
 
@@ -266,11 +266,14 @@ def model(hparams, X, past=None, scope='model', reuse=False):
 
         # Transformer
         presents = []
+
         pasts = tf.unstack(past, axis=1) if past is not None else [None] * hparams.n_layer
         assert len(pasts) == hparams.n_layer
+
         for layer, past in enumerate(pasts):
             h, present = block(h, 'h%d' % layer, past=past, hparams=hparams)
             presents.append(present)
+
         results['present'] = tf.stack(presents, axis=1)
         h = norm(h, 'ln_f')
 
