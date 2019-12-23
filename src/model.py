@@ -234,21 +234,39 @@ def past_shape(*, hparams, batch_size=None, sequence=None):
 
 def expand_tile(value, size):
     """
-    Tile (duplicate) tensor size times: from [x,y] to [[x,y],[x,y] .. size times .. [x,y]]
-    Constructed so as to be able to take lists, tuples, etc. as input.
+    Tile (duplicate) tensor size times: from [x,y] to [[x,y],[x,y] .. size
+    times .. [x,y]] Constructed so as to be able to take lists, tuples, etc. as
+    input.
     """
     value = tf.convert_to_tensor(value, name='value')
     ndims = value.shape.ndims
 
     # expand [x,y] to [[x,y]], then tile [size] times according to the outer dim
-    # ([size] + [1]*ndims turning into e.g. [3,1,1])
+    # ([size] + [1]*ndims turning into e.g. [3,1,1]): the ones are required by
+    # tf.tile to specify that each new dimension is present once (which allows
+    # to tile higher-dimensional vectors: [[1,2],[3,4]] becomes
+    # [[[1,2],[3,4]]], then tile receives e.g. [3,1,1], leading to
+    # [[[1,2],[3,4]],[[1,2],[3,4]],[[1,2],[3,4]]]
     return tf.tile(tf.expand_dims(value, axis=0), [size] + [1]*ndims)
 
 def positions_for(tokens, past_length):
+    '''
+    Receives tokens, extracts batch size and nsteps, then generates a new
+    vector containing, if nsteps = 3:
+        [[past_l, past_l+1, past_l+2, ..., past_l+nsteps],
+         [past_l, past_l+1, past_l+2, ..., past_l+nsteps],
+         ...,                                               batch_size times
+         [past_l, past_l+1, past_l+2, ..., past_l+nsteps]]
+
+    Ex: [[0,1,2,3],[0,1,2,3]] for past_l = 0, nstep = 3, batch_size = 2,
+        [[3,4,5],[3,4,5],[3,4,5],[3,4,5]] for past_l = 3, nstep = 2, batch_size = 4
+
+    past_length: always a single number
+    '''
     batch_size = tf.shape(tokens)[0]
     nsteps = tf.shape(tokens)[1]
+    # past_length broadcast onto range: 2 + [0 1 2] -> [2 3 4]
     return expand_tile(past_length + tf.range(nsteps), batch_size)
-
 
 def model(hparams, X, past=None, scope='model', reuse=False):
 
@@ -257,11 +275,28 @@ def model(hparams, X, past=None, scope='model', reuse=False):
         results = {}
         batch, sequence = shape_list(X)
 
-        wpe = tf.get_variable('wpe', [hparams.n_ctx, hparams.n_embd],
-                             initializer=tf.random_normal_initializer(stddev=0.01))
-        wte = tf.get_variable('wte', [hparams.n_vocab, hparams.n_embd],
-                             initializer=tf.random_normal_initializer(stddev=0.02))
+        # still not 100% clear how the two following tensors are used: as a
+        # total reservoir of contexts and words? For the vocabulary this seems
+        # understandable, but for contexts?
+
+        # why a different initializer for each? (0.01/0.02)
+
+        # shape: [context vectors, embedding space size]
+        wpe = tf.get_variable('wpe',
+                              [hparams.n_ctx, hparams.n_embd],
+                              initializer=tf.random_normal_initializer(stddev=0.01))
+
+        # shape: [vocab vectors, embedding space size]
+        wte = tf.get_variable('wte',
+                              [hparams.n_vocab, hparams.n_embd],
+                              initializer=tf.random_normal_initializer(stddev=0.02))
+
+        # always a number: the number of generated steps so far(?)
         past_length = 0 if past is None else tf.shape(past)[-2]
+
+        # X tensor used to indicate which slices of wte (which context vectors)
+        # are to be selected, positions_for() returning a tensor containing
+        # batch size identical tensors [past_l, past_l+1, ... past_l+nsteps]
         h = tf.gather(wte, X) + tf.gather(wpe, positions_for(X, past_length))
 
         # Transformer
@@ -270,16 +305,24 @@ def model(hparams, X, past=None, scope='model', reuse=False):
         pasts = tf.unstack(past, axis=1) if past is not None else [None] * hparams.n_layer
         assert len(pasts) == hparams.n_layer
 
+        # produce and collect presents, h reused at each iteration (and below)
         for layer, past in enumerate(pasts):
-            h, present = block(h, 'h%d' % layer, past=past, hparams=hparams)
+            h, present = block(h,
+                              'h%d' % layer,
+                               past=past,
+                               hparams=hparams)
             presents.append(present)
 
+        # storing present
         results['present'] = tf.stack(presents, axis=1)
-        h = norm(h, 'ln_f')
+        h = norm(h, 'ln_f') # h shape [batch, sequence, n_embd]
 
         # Language model loss.  Do tokens <n predict token n?
         h_flat = tf.reshape(h, [batch*sequence, hparams.n_embd])
-        logits = tf.matmul(h_flat, wte, transpose_b=True)
+        logits = tf.matmul(h_flat, wte, transpose_b=True) # wte shape [n_vocab, n_embd], transposed: [n_embd, n_vocab]
         logits = tf.reshape(logits, [batch, sequence, hparams.n_vocab])
+
+        # storing logits
         results['logits'] = logits
+
         return results
