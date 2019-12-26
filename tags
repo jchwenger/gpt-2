@@ -59,7 +59,7 @@ r	download_model.py	/^    r = requests.get("https:\/\/storage.googleapis.com\/gp
 raw_text	src/interactive_conditional_samples.py	/^                raw_text = input("Model prompt >>> ")$/;"	v
 raw_text	src/interactive_conditional_samples.py	/^            raw_text = input("Model prompt >>> ")$/;"	v
 sample_model	src/generate_unconditional_samples.py	/^def sample_model($/;"	f
-sample_sequence	src/sample.py	/^def sample_sequence(*, $/;"	f
+sample_sequence	src/sample.py	/^def sample_sequence(*,$/;"	f
 saver	src/generate_unconditional_samples.py	/^        saver = tf.train.Saver()$/;"	v
 saver	src/interactive_conditional_samples.py	/^        saver = tf.train.Saver()$/;"	v
 shape_list	src/model.py	/^def shape_list(x):$/;"	f
