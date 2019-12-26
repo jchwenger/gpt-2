@@ -24,7 +24,7 @@ def bytes_to_unicode():
 
     # ord: returns integer corresponding to Unicode character
     bs = list(range(ord("!"), ord("~")+1))+list(range(ord("¡"), ord("¬")+1))+list(range(ord("®"), ord("ÿ")+1))
-    cs = bs[:]
+    cs = bs[:] # create a deep copy
 
     n = 0
     for b in range(2**8):
@@ -72,17 +72,22 @@ class Encoder:
         self.cache = {}
 
         # Should haved added re.IGNORECASE so BPE merges can happen for capitalized versions of contractions
-                            # Regexes:
-                            # contractions
-                            # words: one or more of any letter (\p{L}), preceded by optional space
-                            # numbers: (\p{N}), preceded by optional space
-                            # no code: NOT a space followed by one letter & one or more of any number (code)
-                            #          preceded by optional space, all this one or more times
-                            # no single space: one or more spaces not followed non-whitespace, negative lookahead: (?!\S) 
-                            # one or more spaces ok
+                            # Standard matches:
+                            # - contractions ('s, 't, 're, 've, 'm, 'll, 'd)
+                            # The next three preceded by optional space:
+                            # - words: one or more of any letter (\p{L})
+                            # - numbers: one or more of any (\p{N})
+                            # - punctuation: neither space, letter or number, one or more times
+                            #   [^\s\p{L}\p{N}]
+                            # Blank spaces:
+                            # - no single space: one or more spaces not followed non-whitespace (letter, etc.)
+                            #   (note the lovely negative lookahead: (?!\S))
+                            # - one or more spaces ok
         self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""", flags=re.IGNORECASE)
                                                                                                                 # adding ignorecase, as mentioned above
 
+    # Replace the most common byte pairs by a single one to compress the
+    # message, can be done recursively, cf. here https://en.wikipedia.org/wiki/Byte_pair_encoding
     def bpe(self, token):
 
         # don't do the work twice, save words on the go
@@ -160,12 +165,10 @@ def get_encoder(model_name):
     # get the complete vocabulary as txt file
     with open(os.path.join('models', model_name, 'vocab.bpe'), 'r', encoding="utf-8") as f:
         bpe_data = f.read()
-                                                                                # skip the first line
-                                                                                # that has the version,
-                                                                                # skip the last element
-                                                                                # of split, which will
-    # turn words with a space into a tuple, e.g. ('Ġdes', 'olate')              # be empty
+
+    # translates a string format with x y on each line to [(x,y),...]
     bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split('\n')[1:-1]]
+                                                                                # skip the first line
     return Encoder(
         encoder=encoder,
         bpe_merges=bpe_merges,
