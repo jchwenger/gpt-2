@@ -142,9 +142,11 @@ def attn(x, scope, n_state, *, past, hparams):
     def multihead_attn(q, k, v):
         """
         Formula: (softmax(Q*Ktranspose)/sqrt(dv))*V
-        dv: scaling factor, as countereffect to dot-product attention, faster & more space-efficient than
-        additive attention, growing in magnitude for larger dv values (which pushes softmax to zero)
+        dv: scaling factor, as countereffect to dot-product attention, faster &
+        more space-efficient than additive attention, growing in magnitude for
+        larger dv values (which pushes softmax to zero)
         """
+
         # dot-prod, q, k, v have shape [batch, heads, sequence, features]
         w = tf.matmul(q, k, transpose_b=True)
 
@@ -167,7 +169,8 @@ def attn(x, scope, n_state, *, past, hparams):
         # linear layer, x is [batch, sequence, features], n_state == x.shape[-1].value
         c = conv1d(x, 'c_attn', n_state*3) # *3 so you can split it into 3 just below
 
-        # split into heads for parallelized action, c is [batch, sequence, features*3]
+        # split into heads for parallelized action
+        # c is [batch, sequence, features*3]
         # q, k & v are [batch, heads, sequence, features]
         q, k, v = map(split_heads, tf.split(c, 3, axis=2))
 
@@ -211,7 +214,7 @@ def block(x, scope, *, past, hparams):
                           nx,
                           past=past,
                           hparams=hparams)
-        # add
+        # add: residual layer
         x = x + a
 
         # norm then linear
@@ -219,7 +222,8 @@ def block(x, scope, *, past, hparams):
                 'mlp',
                 nx*4,
                 hparams=hparams)
-        # add
+
+        # add: residual layer
         x = x + m
 
         return x, present
@@ -281,11 +285,13 @@ def model(hparams, X, past=None, scope='model', reuse=False):
 
         # why a different initializer for each? (0.01/0.02)
 
+        # position embedding matrix
         # shape: [context vectors, embedding space size]
         wpe = tf.get_variable('wpe',
                               [hparams.n_ctx, hparams.n_embd],
                               initializer=tf.random_normal_initializer(stddev=0.01))
 
+        # token embedding matrix
         # shape: [vocab vectors, embedding space size]
         wte = tf.get_variable('wte',
                               [hparams.n_vocab, hparams.n_embd],
@@ -294,9 +300,10 @@ def model(hparams, X, past=None, scope='model', reuse=False):
         # always a number: the number of generated steps so far(?)
         past_length = 0 if past is None else tf.shape(past)[-2]
 
-        # X tensor used to indicate which slices of wte (which context vectors)
-        # are to be selected, positions_for() returning a tensor containing
-        # batch size identical tensors [past_l, past_l+1, ... past_l+nsteps]
+        # input: add the token embedding and the position embedding
+        # X tensor used to select the appropriate context vector from the wte
+        # matrix, and positions_for(X) to select the position vector from the
+        # wpe matrix: [past_l, past_l+1, <-- batch_size -->, past_l+nsteps]
         h = tf.gather(wte, X) + tf.gather(wpe, positions_for(X, past_length))
 
         # Transformer
