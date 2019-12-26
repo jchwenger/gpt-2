@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Usage:
 #  PYTHONPATH=src ./train --dataset <file|directory|glob>
+import sys
+sys.path.append("/media/default/linux-data/tf/gpt-2/src")
 
 import fire
 import json
