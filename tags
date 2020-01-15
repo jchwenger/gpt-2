@@ -1,0 +1,129 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+AccumulatingOptimizer	gpt_2_simple/src/accumulate.py	/^class AccumulatingOptimizer(object):$/;"	c
+CHUNK_SIZE	sample_from_stream.py	/^CHUNK_SIZE = int(SAMPLE_RATE \/ 10)  # 100ms$/;"	v
+DEBUG_LOGGING	gpt_2_simple/src/memory_saving_gradients.py	/^DEBUG_LOGGING=False$/;"	v
+Encoder	gpt_2_simple/src/encoder.py	/^class Encoder:$/;"	c
+HParams	gpt_2_simple/src/model.py	/^class HParams():$/;"	c
+MIN_CHECKPOINT_NODE_SIZE	gpt_2_simple/src/memory_saving_gradients.py	/^MIN_CHECKPOINT_NODE_SIZE=1024    # use lower value during testing$/;"	v
+ResumableMicrophoneStream	sample_from_stream.py	/^class ResumableMicrophoneStream:$/;"	c
+SAMPLE_RATE	sample_from_stream.py	/^SAMPLE_RATE = 16000$/;"	v
+STREAMING_LIMIT	sample_from_stream.py	/^STREAMING_LIMIT = 290000$/;"	v
+Sampler	gpt_2_simple/src/load_dataset.py	/^class Sampler(object):$/;"	c
+__enter__	sample_from_stream.py	/^    def __enter__(self):$/;"	m	class:ResumableMicrophoneStream	file:
+__exit__	sample_from_stream.py	/^    def __exit__(self, type, value, traceback):$/;"	m	class:ResumableMicrophoneStream	file:
+__init__	gpt_2_simple/src/accumulate.py	/^    def __init__(self, opt, var_list):$/;"	m	class:AccumulatingOptimizer
+__init__	gpt_2_simple/src/encoder.py	/^    def __init__(self, encoder, bpe_merges, errors='replace'):$/;"	m	class:Encoder
+__init__	gpt_2_simple/src/load_dataset.py	/^    def __init__(self, chunks):$/;"	m	class:Sampler
+__init__	gpt_2_simple/src/model.py	/^    def __init__(self, n_vocab, n_ctx, n_embd, n_head, n_layer):$/;"	m	class:HParams
+__init__	sample_from_stream.py	/^    def __init__(self, rate, chunk_size):$/;"	m	class:ResumableMicrophoneStream
+_fill_buffer	sample_from_stream.py	/^    def _fill_buffer(self, in_data, *args, **kwargs):$/;"	m	class:ResumableMicrophoneStream
+_is_iterable	gpt_2_simple/src/memory_saving_gradients.py	/^def _is_iterable(o):$/;"	f
+_to_op	gpt_2_simple/src/memory_saving_gradients.py	/^def _to_op(tensor_or_op):$/;"	f
+_to_ops	gpt_2_simple/src/memory_saving_gradients.py	/^def _to_ops(iterable):$/;"	f
+_top_k	gpt_2_simple/src/sample.py	/^    def _top_k():$/;"	f	function:top_k_logits
+_unsparsify	gpt_2_simple/src/memory_saving_gradients.py	/^        def _unsparsify(x):$/;"	f	function:gradients
+apply_gradients	gpt_2_simple/src/accumulate.py	/^    def apply_gradients(self):$/;"	m	class:AccumulatingOptimizer
+attention_mask	gpt_2_simple/src/model.py	/^def attention_mask(nd, ns, *, dtype):$/;"	f
+attn	gpt_2_simple/src/model.py	/^def attn(x, scope, n_state, *, past, hparams):$/;"	f
+author	setup.py	/^    author='Max Woolf',$/;"	v
+author_email	setup.py	/^    author_email='max@minimaxir.com',$/;"	v
+binary_search	gpt_2_simple/src/load_dataset.py	/^def binary_search(f, lo, hi):$/;"	f
+block	gpt_2_simple/src/model.py	/^def block(x, scope, *, past, hparams):$/;"	f
+body	gpt_2_simple/src/sample.py	/^        def body(past, prev, output):$/;"	f	function:sample_sequence.step
+bpe	gpt_2_simple/src/encoder.py	/^    def bpe(self, token):$/;"	m	class:Encoder
+bytes_to_unicode	gpt_2_simple/src/encoder.py	/^def bytes_to_unicode():$/;"	f
+capture_ops	gpt_2_simple/src/memory_saving_gradients.py	/^def capture_ops():$/;"	f
+classifiers	setup.py	/^    classifiers=[],$/;"	v
+cmd	gpt_2_simple/gpt_2.py	/^def cmd():$/;"	f
+cmd_finetune	gpt_2_simple/gpt_2.py	/^def cmd_finetune(dataset, run_name, checkpoint_dir, model_name, model_dir, steps,$/;"	f
+cmd_generate	gpt_2_simple/gpt_2.py	/^def cmd_generate(nfiles, nsamples, folder,$/;"	f
+compute_gradients	gpt_2_simple/src/accumulate.py	/^    def compute_gradients(self, loss):$/;"	m	class:AccumulatingOptimizer
+cond	gpt_2_simple/src/sample.py	/^        def cond(*args):$/;"	f	function:sample_sequence.step
+conv1d	gpt_2_simple/src/model.py	/^def conv1d(x, scope, nf, *, w_init_stdev=0.02):$/;"	f
+copy_checkpoint_from_gdrive	gpt_2_simple/gpt_2.py	/^def copy_checkpoint_from_gdrive(run_name='run1', copy_folder=False):$/;"	f
+copy_checkpoint_to_gdrive	gpt_2_simple/gpt_2.py	/^def copy_checkpoint_to_gdrive(run_name='run1', copy_folder=False):$/;"	f
+copy_file_from_gdrive	gpt_2_simple/gpt_2.py	/^def copy_file_from_gdrive(file_path):$/;"	f
+copy_file_to_gdrive	gpt_2_simple/gpt_2.py	/^def copy_file_to_gdrive(file_path):$/;"	f
+debug_print	gpt_2_simple/src/memory_saving_gradients.py	/^def debug_print(s, *args):$/;"	f
+decode	gpt_2_simple/src/encoder.py	/^    def decode(self, tokens):$/;"	m	class:Encoder
+default_hparams	gpt_2_simple/src/model.py	/^def default_hparams():$/;"	f
+description	setup.py	/^    "text-generating model on new texts.",$/;"	v
+download_file_with_progress	gpt_2_simple/gpt_2.py	/^def download_file_with_progress(url_base, sub_dir, model_name, file_name):$/;"	f
+download_gpt2	gpt_2_simple/gpt_2.py	/^def download_gpt2(model_dir='models', model_name='124M'):$/;"	f
+duration_to_secs	sample_from_stream.py	/^def duration_to_secs(duration):$/;"	f
+encode	gpt_2_simple/src/encoder.py	/^    def encode(self, text):$/;"	m	class:Encoder
+encode_csv	gpt_2_simple/gpt_2.py	/^def encode_csv(csv_path, out_path='csv_encoded.txt', header=True,$/;"	f
+encode_dataset	gpt_2_simple/gpt_2.py	/^def encode_dataset(file_path, model_dir='models', out_path='text_encoded.npz',$/;"	f
+entry_points	setup.py	/^    entry_points={$/;"	v
+expand_tile	gpt_2_simple/src/model.py	/^def expand_tile(value, size):$/;"	f
+fast_backward_ops	gpt_2_simple/src/memory_saving_gradients.py	/^def fast_backward_ops(within_ops, seed_ops, stop_at_ts):$/;"	f
+finetune	gpt_2_simple/gpt_2.py	/^def finetune(sess,$/;"	f
+fixdims	gpt_2_simple/src/memory_saving_gradients.py	/^            def fixdims(t): # tf.Dimension values are not compatible with int, convert manually$/;"	f	function:gradients
+format_ops	gpt_2_simple/src/memory_saving_gradients.py	/^def format_ops(ops, sort_outputs=True):$/;"	f
+gelu	gpt_2_simple/src/model.py	/^def gelu(x):$/;"	f
+generate	gpt_2_simple/gpt_2.py	/^def generate(sess,$/;"	f
+generate_gradual	gpt_2_simple/gpt_2.py	/^def generate_gradual(sess,$/;"	f
+generate_samples	gpt_2_simple/gpt_2.py	/^    def generate_samples():$/;"	f	function:finetune
+generate_to_file	gpt_2_simple/gpt_2.py	/^def generate_to_file(sess,$/;"	f
+generator	sample_from_stream.py	/^    def generator(self):$/;"	m	class:ResumableMicrophoneStream
+get_available_gpus	gpt_2_simple/gpt_2.py	/^def get_available_gpus():$/;"	f
+get_current_time	sample_from_stream.py	/^def get_current_time():$/;"	f
+get_encoder	gpt_2_simple/src/encoder.py	/^def get_encoder(checkpoint_path):$/;"	f
+get_pairs	gpt_2_simple/src/encoder.py	/^def get_pairs(word):$/;"	f
+get_tarfile_name	gpt_2_simple/gpt_2.py	/^def get_tarfile_name(checkpoint_folder):$/;"	f
+gradients	gpt_2_simple/src/memory_saving_gradients.py	/^def gradients(ys, xs, grad_ys=None, checkpoints='collection', **kwargs):$/;"	f
+gradients_collection	gpt_2_simple/src/memory_saving_gradients.py	/^def gradients_collection(ys, xs, grad_ys=None, **kwargs):$/;"	f
+gradients_memory	gpt_2_simple/src/memory_saving_gradients.py	/^def gradients_memory(ys, xs, grad_ys=None, **kwargs):$/;"	f
+gradients_speed	gpt_2_simple/src/memory_saving_gradients.py	/^def gradients_speed(ys, xs, grad_ys=None, **kwargs):$/;"	f
+include_package_data	setup.py	/^    include_package_data=True,$/;"	v
+install_requires	setup.py	/^    install_requires=['regex', 'requests', 'tqdm', 'numpy', 'toposort']$/;"	v
+is_gpt2_downloaded	gpt_2_simple/gpt_2.py	/^def is_gpt2_downloaded(model_dir='models', model_name='124M'):$/;"	f
+is_mounted	gpt_2_simple/gpt_2.py	/^def is_mounted():$/;"	f
+keywords	setup.py	/^    keywords=['deep learning', 'tensorflow', 'text generation'],$/;"	v
+license	setup.py	/^    license='MIT',$/;"	v
+listen_loop	sample_from_stream.py	/^def listen_loop(responses, stream):$/;"	f
+listen_print_loop	sample_from_stream.py	/^def listen_print_loop(responses, stream):$/;"	f
+load_dataset	gpt_2_simple/src/load_dataset.py	/^def load_dataset(enc, path, combine):$/;"	f
+load_gpt2	gpt_2_simple/gpt_2.py	/^def load_gpt2(sess,$/;"	f
+long_description	setup.py	/^    long_description=long_description,$/;"	v
+long_description_content_type	setup.py	/^    long_description_content_type='text\/markdown',$/;"	v
+main	sample_from_stream.py	/^def main():$/;"	f
+maketree	gpt_2_simple/gpt_2.py	/^    def maketree(path):$/;"	f	function:finetune
+mask_attn_weights	gpt_2_simple/src/model.py	/^    def mask_attn_weights(w):$/;"	f	function:attn
+merge_heads	gpt_2_simple/src/model.py	/^    def merge_heads(x):$/;"	f	function:attn
+merge_states	gpt_2_simple/src/model.py	/^def merge_states(x):$/;"	f
+mlp	gpt_2_simple/src/model.py	/^def mlp(x, scope, n_state, *, hparams):$/;"	f
+model	gpt_2_simple/src/model.py	/^def model(hparams, X, past=None, scope='model', gpus=[], reuse=False):$/;"	f
+mount_gdrive	gpt_2_simple/gpt_2.py	/^def mount_gdrive():$/;"	f
+multihead_attn	gpt_2_simple/src/model.py	/^    def multihead_attn(q, k, v):$/;"	f	function:attn
+my_add_control_inputs	gpt_2_simple/src/memory_saving_gradients.py	/^def my_add_control_inputs(wait_to_do_ops, inputs_to_do_before):$/;"	f
+name	setup.py	/^    name='gpt_2_simple',$/;"	v
+norm	gpt_2_simple/src/model.py	/^def norm(x, scope, *, axis=-1, epsilon=1e-5):$/;"	f
+override_from_dict	gpt_2_simple/src/model.py	/^    def override_from_dict(self, param_dict):$/;"	m	class:HParams
+packages	setup.py	/^    packages=['gpt_2_simple'],  # this must be the same as the name above$/;"	v
+past_shape	gpt_2_simple/src/model.py	/^def past_shape(*, hparams, batch_size=None, sequence=None):$/;"	f
+positions_for	gpt_2_simple/src/model.py	/^def positions_for(tokens, past_length):$/;"	f
+reset	gpt_2_simple/src/accumulate.py	/^    def reset(self):$/;"	m	class:AccumulatingOptimizer
+reset_session	gpt_2_simple/gpt_2.py	/^def reset_session(sess, threads=-1, server=None):$/;"	f
+sample	gpt_2_simple/src/load_dataset.py	/^    def sample(self, length):$/;"	m	class:Sampler
+sample_batch	gpt_2_simple/gpt_2.py	/^    def sample_batch():$/;"	f	function:finetune
+sample_sequence	gpt_2_simple/src/sample.py	/^def sample_sequence(*, hparams, length, start_token=None,$/;"	f
+save	gpt_2_simple/gpt_2.py	/^    def save():$/;"	f	function:finetune
+shape_list	gpt_2_simple/src/model.py	/^def shape_list(x):$/;"	f
+softmax	gpt_2_simple/src/model.py	/^def softmax(x, axis=-1):$/;"	f
+split_heads	gpt_2_simple/src/model.py	/^    def split_heads(x):$/;"	f	function:attn
+split_states	gpt_2_simple/src/model.py	/^def split_states(x, n):$/;"	f
+start_tf_sess	gpt_2_simple/gpt_2.py	/^def start_tf_sess(threads=-1, server=None):$/;"	f
+step	gpt_2_simple/src/sample.py	/^    def step(hparams, tokens, past=None):$/;"	f	function:sample_sequence
+tf_gradients	gpt_2_simple/src/memory_saving_gradients.py	/^tf_gradients = tf_gradients_lib.gradients$/;"	v
+tf_toposort	gpt_2_simple/src/memory_saving_gradients.py	/^def tf_toposort(ts, within_ops=None):$/;"	f
+top_k_logits	gpt_2_simple/src/sample.py	/^def top_k_logits(logits, k):$/;"	f
+top_p_logits	gpt_2_simple/src/sample.py	/^def top_p_logits(logits, p):$/;"	f
+url	setup.py	/^    url='https:\/\/github.com\/minimaxir\/gpt-2-simple',$/;"	v
+util	gpt_2_simple/src/memory_saving_gradients.py	/^util = sys.modules[__name__]$/;"	v
+version	setup.py	/^    version='0.7',$/;"	v
