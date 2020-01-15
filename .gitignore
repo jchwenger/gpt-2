@@ -7,3 +7,4 @@ dist/
 gpt_2_simple.egg-info/
 build/
 models/
+checkpoint/
