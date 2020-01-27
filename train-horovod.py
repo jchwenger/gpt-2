@@ -5,17 +5,15 @@ import sys
 
 sys.path.append("/media/default/linux-data/tf/gpt-2/src")
 
+import os
 import fire
 import json
-import os
+import time
+import random
 import numpy as np
 import tensorflow as tf
-import random
-import time
-
-import horovod.tensorflow as hvd
-
 import model, sample, encoder
+import horovod.tensorflow as hvd
 from load_dataset import load_dataset, Sampler
 
 CHECKPOINT_DIR = "checkpoint"
@@ -60,8 +58,13 @@ def train_main(
     # TF config
 
     config = tf.ConfigProto()
+    # horovod local_rank: local GPU identifier (0-3 for 4 gpus...)
+    # horovod rank would be the total no of workers (e.g. 4 gpus on 3
+    # machines/nodes)
+    # https://horovod.readthedocs.io/en/latest/api.html#horovod.tensorflow.local_rank
+    # https://horovod.readthedocs.io/en/latest/api.html#horovod.tensorflow.rank
     config.gpu_options.visible_device_list = str(hvd.local_rank())
-    config.gpu_options.allow_growth = True
+    config.gpu_options.allow_growth = True # on-demande memory use in gpu
 
     with tf.Session(config=config) as sess:
         context = tf.placeholder(tf.int32, [batch_size, None])
