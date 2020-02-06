@@ -220,7 +220,7 @@ def main():
     gpt2.load_gpt2(sess, run_name="run1")
 
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.abspath(
-        "voix-264921-485ba4bc7629.json"
+        "/media/default/linux-data/docs/voix-264921-485ba4bc7629.json"
     )
     client = speech.SpeechClient()
     config = speech.types.RecognitionConfig(
