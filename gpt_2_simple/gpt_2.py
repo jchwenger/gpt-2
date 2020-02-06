@@ -446,6 +446,13 @@ def generate(sess,
     if prefix:
         context = tf.compat.v1.placeholder(tf.int32, [batch_size, None])
         context_tokens = enc.encode(prefix)
+        # make sure what is fed to the network is short enough
+        limit = 1023 - length
+        too_long = False
+        if len(context_tokens) > limit:
+            init_removed_tokens = context_tokens[:-limit]
+            context_tokens = context_tokens[-limit:]
+            too_long = True
 
     np.random.seed(seed)
     tf.compat.v1.set_random_seed(seed)
@@ -474,7 +481,11 @@ def generate(sess,
             generated += 1
             gen_text = enc.decode(out[i])
             if prefix:
-                gen_text = enc.decode(context_tokens[:1]) + gen_text
+                if too_long:
+                    out_tokens = init_removed_tokens + context_tokens[:1]
+                else:
+                    out_tokens = context_tokens[:1]
+                gen_text = enc.decode(out_tokens) + gen_text
             if truncate:
                 truncate_esc = re.escape(truncate)
                 if prefix and not include_prefix:
