@@ -33,6 +33,7 @@ import os
 import sys
 import time
 import regex
+import argparse
 
 # disabling some warnings
 os.environ["KMP_WARNINGS"] = "off"
@@ -215,7 +216,30 @@ def listen_loop(responses, stream):
             return transcript
 
 
-def main():
+def gpt_answer_string(sess, pref, length=250):
+    return gpt2.generate(
+        sess,
+        run_name="run1",
+        checkpoint_dir="checkpoint",
+        model_name="117M",
+        model_dir="models",
+        sample_dir="samples",
+        return_as_list=True,
+        sample_delim="=" * 20 + "\n",
+        prefix=pref,
+        # seed=None,
+        nsamples=1,
+        batch_size=1,
+        length=length,
+        temperature=0.7,
+        top_k=0,
+        top_p=5,
+        include_prefix=True,
+    )[0]
+
+
+def main(args):
+
     sess = gpt2.start_tf_sess()
     gpt2.load_gpt2(sess, run_name="run1")
 
@@ -265,67 +289,81 @@ def main():
             responses = client.streaming_recognize(streaming_config, requests)
 
             text = listen_loop(responses, stream)
-            print('TOI.')
+            print()
+            print("TOI.")
             print(text)
 
             # add end of answer, store length of prefix
             pref = f"{new_pref+text}\n<|finderéplique|>\n"
             end_pref = len(pref)
 
-            l = gpt_answer_string(sess, pref)
+            l = gpt_answer_string(sess, pref, args.length)
 
             # prefix riddance
             l_no_pref = l[end_pref:]
 
-            # print()
-            # print('\t'*3 + l[:end_pref].replace('\n', '\n\t\t\t'))
-            # print('\t'*3 +'-----------------')
-            # print('\t'*3 + l_no_pref.replace('\n', '\n\t\t\t'))
-            # print()
+            if args.choice:
+                # regex for all answers
+                m = list(regex.finditer(pref_re, l_no_pref))
+                print()
+                print("Toutes les réponses.")
+                for i, answer in enumerate(m):
+                    print(f"{i+1}:\n  {answer.group(0)}")
+                choice = input("choix: ")
+                while not (choice.isdigit() and int(choice) <= len(m)):
+                    choice = input(
+                        "S'il te plaît, donne-moi le chiffre de ta réponse: "
+                    )
+                choice = int(choice)
+                answer = m[choice - 1].group(0)
 
-            # regex get our first answer
-            m = regex.search(pref_re, l_no_pref)
+                # security: if none, resample
+                while not m:
+                    l = gpt_answer_string(sess, pref, args.length)
+                    l_no_pref = l[end_pref:]
+                    m = list(regex.finditer(pref_re, l_no_pref))
 
-            # security: if none, resample
-            while not m:
-                l = gpt_answer_string(pref)
-                l_no_pref = l[end_pref:]
+                answer_end_ind = m[choice - 1].span()[1]
+
+            else:
+                # regex get our first answer
                 m = regex.search(pref_re, l_no_pref)
 
-            new_pref = f"{l[:end_pref+m.span()[1]]}\n<|finderéplique|>\n"
+                # security: if none, resample
+                while not m:
+                    l = gpt_answer_string(sess, pref, args.length)
+                    l_no_pref = l[end_pref:]
+                    m = regex.search(pref_re, l_no_pref)
 
-            answer = m.group(0)
+                answer = m.group(0)
 
+                answer_end_ind = m.span()[1]
+
+            print()
             print("GPT.")
             print(f"{answer}")
 
-            # print()
-            # print('new prefix:')
-            # print(new_pref)
-
-
-def gpt_answer_string(sess, pref):
-    return gpt2.generate(
-        sess,
-        run_name="run1",
-        checkpoint_dir="checkpoint",
-        model_name="117M",
-        model_dir="models",
-        sample_dir="samples",
-        return_as_list=True,
-        sample_delim="=" * 20 + "\n",
-        prefix=pref,
-        # seed=None,
-        nsamples=1,
-        batch_size=1,
-        length=100,
-        temperature=0.7,
-        top_k=0,
-        top_p=5,
-        include_prefix=True,
-    )[0]
+            new_pref = f"{l[:end_pref+answer_end_ind]}\n<|finderéplique|>\n"
 
 
 if __name__ == "__main__":
-    main()
-# [END speech_transcribe_infinite_streaming]
+
+    parser = argparse.ArgumentParser(description="Audiobot with gpt.")
+
+    parser.add_argument(
+        "--choice",
+        help="Returns more than one answer that the user can choose from. Default: false",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--length",
+        help="The length of the text gpt-2 will generate. Default: 250.",
+        type=int,
+        default=250,
+    )
+
+    args = parser.parse_args()
+
+    main(args)
+    # [END speech_transcribe_infinite_streaming]
