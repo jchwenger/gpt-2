@@ -343,6 +343,9 @@ def main(args):
             print("GPT.")
             print(f"{answer}")
 
+            with open("answer.txt", "w") as o:
+                o.write(answer)
+
             new_pref = f"{l[:end_pref+answer_end_ind]}\n<|finderéplique|>\n"
 
 
@@ -351,13 +354,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audiobot with gpt.")
 
     parser.add_argument(
-        "--choice",
+        "--choice", "-c",
         help="Returns more than one answer that the user can choose from. Default: false",
         action="store_true",
     )
 
     parser.add_argument(
-        "--length",
+        "--length", "-l",
         help="The length of the text gpt-2 will generate. Default: 250.",
         type=int,
         default=250,
