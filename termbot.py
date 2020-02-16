@@ -51,10 +51,10 @@ def main(args):
     os.system('clear')
     print(msg)
     print("-" * len(msg))
-    print()
 
     while True:
 
+        print()
         text = input("TOI.\n")
 
         # add end of answer, store length of prefix
@@ -95,6 +95,7 @@ def main(args):
             answer_end_ind = m[choice - 1].span()[1]
 
         else:
+
             # regex get our first answer
             m = regex.search(pref_re, l_no_pref)
 
@@ -108,14 +109,15 @@ def main(args):
 
             answer_end_ind = m.span()[1]
 
+        print()
         print("L'AUTRE.")
         print(f"{answer}")
+
+        new_pref = f"{l[:end_pref+answer_end_ind]}\n<|finderéplique|>\n"
 
         if args.typewriter:
             with open("typeWriter/data/answer.txt", "w") as o:
                 o.write(answer)
-
-        new_pref = f"{l[:end_pref+answer_end_ind]}\n<|finderéplique|>\n"
 
 
 if __name__ == "__main__":
