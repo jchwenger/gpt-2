@@ -26,8 +26,6 @@ Example usage:
 """
 
 # [START speech_transcribe_infinite_streaming]
-from __future__ import division
-
 import re
 import os
 import sys
@@ -237,7 +235,6 @@ def gpt_answer_string(sess, pref, length=250):
         include_prefix=True,
     )[0]
 
-
 def main(args):
 
     sess = gpt2.start_tf_sess()
@@ -246,6 +243,7 @@ def main(args):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.abspath(
         "/media/default/linux-data/docs/voix-264921-485ba4bc7629.json"
     )
+
     client = speech.SpeechClient()
     config = speech.types.RecognitionConfig(
         encoding=speech.enums.RecognitionConfig.AudioEncoding.LINEAR16,
@@ -343,7 +341,7 @@ def main(args):
             print("GPT.")
             print(f"{answer}")
 
-            with open("answer.txt", "w") as o:
+            with open("typeWriter/data/answer.txt", "w") as o:
                 o.write(answer)
 
             new_pref = f"{l[:end_pref+answer_end_ind]}\n<|finderéplique|>\n"
