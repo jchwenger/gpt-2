@@ -164,8 +164,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--plain", "-p",
         help="Prints all the output.",
-        type=bool,
-        default=True
+        action="store_true",
     )
 
     parser.add_argument(
