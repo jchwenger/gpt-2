@@ -4,13 +4,15 @@ import sys
 import time
 import regex
 import argparse
-
-from six.moves import queue
+import readline
 
 import gpt_2_simple as gpt2
 
 # disabling some warnings
 os.environ["KMP_WARNINGS"] = "off"
+
+# press tab to insert newline chars during input
+readline.parse_and_bind('tab: "\x16\n"')
 
 def gpt_answer_string(sess, pref, length=250, run=None):
     return gpt2.generate(
@@ -36,7 +38,6 @@ def gpt_answer_string(sess, pref, length=250, run=None):
 def main(args):
 
     sess = gpt2.start_tf_sess()
-    print(args.run)
     gpt2.load_gpt2(sess, run_name=args.run)
 
     # hack: dummy generation to get first warnings out of the way
@@ -44,7 +45,7 @@ def main(args):
 
     # find first response in gpt stream
     pref_re = regex.compile(
-        "(?<=<\|débutderéplique\|>\n).*?(?=\n<\|finderéplique\|>)", regex.DOTALL
+        "(?<=<\|finderéplique\|>\n).*?(?=\n<\|finderéplique\|>)", regex.DOTALL
     )
     new_pref = ""
 
@@ -81,14 +82,20 @@ def main(args):
         # chatbot, with one or more answers
         else:
 
-            print()
-            text = input("TOI.\n")
+            text = input()
+
+            # inject marker in input
+            tmp_split = text.split('\n')
+            rest_split = '\n'.join(tmp_split[1:])
+            text = f'{tmp_split[0]}\n<|débutderéplique|>\n{rest_split}'
 
             # add end of answer, store length of prefix
-            pref = f"{new_pref+text}\n<|finderéplique|>\n"
+            pref = f'{new_pref+text}\n<|finderéplique|>\n'
             end_pref = len(pref)
 
             l = gpt_answer_string(sess, pref, args.length, run=args.run)
+
+            raw_log(f'\tproduction brute\n{l}')
 
             # prefix riddance
             l_no_pref = l[end_pref:]
@@ -125,30 +132,66 @@ def main(args):
             else:
 
                 # regex get our first answer
-                m = regex.search(pref_re, l_no_pref)
+                m = regex.search(pref_re, '\n<|finderéplique|>\n' + l_no_pref)
+
+                raw_log('regex fodder\n\n<|finderéplique|>\n' + l_no_pref)
+
+                # # longest answer
+                # all_answ = regex.finditer(pref_re, l_no_pref)
+                # for answ in all_answ:
+                #     tmp = answ.group(0)
+                #     if len(tmp) > len(m.group(0)):
+                #         m = answ
 
                 # security: if none, resample
+                i = 2
                 while not m:
-                    l = gpt_answer_string(sess, pref, args.length)
-                    l_no_pref = l[end_pref:]
-                    m = regex.search(pref_re, l_no_pref)
 
+                    emergency_length = args.length*i
+                    i += 1
+                    l = gpt_answer_string(sess, pref, args.length)
+
+                    raw_log(f'\treproduction brute\n{l}')
+
+                    l_no_pref = l[end_pref:]
+
+                    m = regex.search(pref_re, '\n<|finderéplique|>\n' + l_no_pref)
+
+                    raw_log('\tregex fodder (reproduction)\n\n<|finderéplique|>\n' + l_no_pref)
+
+                # remove marker but print char name as well
                 answer = m.group(0)
+                answer = answer.replace('<|débutderéplique|>\n', '')
                 answer_end_ind = m.span()[1]
 
-            print()
-            print("L'AUTRE.")
+            # conclusion common to both 1 and many answers bots
             print(f"{answer}")
 
-            new_pref = f"{l[:end_pref+answer_end_ind]}\n<|finderéplique|>\n"
+            answer_with_markers = f"{m.group(0)}\n<|finderéplique|>\n"
+            new_pref = pref + answer_with_markers
+
+            # new_pref = f"{l[]}\n<|finderéplique|>\n"
+            # new_pref = f"{l[:end_pref+answer_end_ind]}\n<|finderéplique|>\n"
+
+            raw_log(f'\tnew prefix\n{new_pref}')
 
             if args.typewriter:
                 with open("typeWriter/data/answer.txt", "w") as o:
                     o.write(answer)
 
-def underprint(msg):
-    print(msg)
+def underprint(msg): print(msg)
     print('-'*len(msg))
+
+def raw_log(l, slate=False):
+    if not slate:
+        with open('raw.logs', 'a') as o:
+            o.write('\n----------------------------\n')
+            o.write(l)
+    else:
+        with open('raw.logs', 'w') as o:
+            o.write('\n----------------------------\n')
+            o.write(l)
+
 
 
 if __name__ == "__main__":
@@ -189,5 +232,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args)
+    try:
+        main(args)
+    except KeyboardInterrupt:
+        raw_log('')
     # [END speech_transcribe_infinite_streaming]
