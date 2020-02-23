@@ -2,6 +2,7 @@
 __pycache__
 
 models/
+checkpoint/
 
 # Vim tmp files
 *.swo
