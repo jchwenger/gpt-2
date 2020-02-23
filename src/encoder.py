@@ -48,6 +48,8 @@ def get_pairs(word):
 
     Thus, the word 'word' is represented as;
     {('o', 'r'), ('r', 'd'), ('w', 'o')}
+    However, that works also with tuples (of 'symbols'), e.g.:
+    ('ant', 'idis', 'establishment', 'arian', 'ism') > { ('ant', 'idis'), ('idis', 'establishment'), ... ) }
     """
     pairs = set()
     prev_char = word[0]
@@ -95,7 +97,7 @@ class Encoder:
             return self.cache[token]
 
         word = tuple(token)     # turn word to char tuple
-        pairs = get_pairs(word) # get all char pairs: ('w','o','r','d') > { ('w', 'o'), ('o', 'r'), ('r', 'd') }
+        pairs = get_pairs(word) # get all symbol pairs: ('w','o','r','d') > { ('w', 'o'), ('o', 'r'), ('r', 'd') }
 
         # if word was only one symbol?
         if not pairs:
