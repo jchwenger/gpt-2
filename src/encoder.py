@@ -170,7 +170,9 @@ def get_encoder(model_name):
 
     # translates a string format with x y on each line to [(x,y),...]
     bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split('\n')[1:-1]]
-                                                                                # skip the first line
+                                                        # skip the first line & the last
+                                                        # empty element of the split
+
     return Encoder(
         encoder=encoder,
         bpe_merges=bpe_merges,
