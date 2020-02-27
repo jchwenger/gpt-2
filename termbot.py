@@ -179,7 +179,8 @@ def main(args):
                 with open("typeWriter/data/answer.txt", "w") as o:
                     o.write(answer)
 
-def underprint(msg): print(msg)
+def underprint(msg): 
+    print(msg)
     print('-'*len(msg))
 
 def raw_log(l, slate=False):
