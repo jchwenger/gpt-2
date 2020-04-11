@@ -49,6 +49,7 @@ def train_main(
     mixed_precision=False,
     memory_saving_gradients=True,
     only_train_transformer_layers=True,
+    allreduce_on_cpu=False,
 ):
 
     enc = encoder.get_encoder(model_name)
@@ -117,7 +118,12 @@ def train_main(
         summaries = tf.summary.merge([summary_lr, summary_loss])
         summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
 
-        opt = hvd.DistributedOptimizer(opt)
+        # bottom of that pages:
+        # https://github.com/horovod/horovod/blob/80167f6dea0ba6b853d790a3d3a342368811f0da/docs/gpus.rst
+        if allreduce_on_cpu:
+            opt = hvd.DistributedOptimizer(opt, device_dense="/cpu:0")
+        else:
+            opt = hvd.DistributedOptimizer(opt)
         train_op = opt.minimize(loss, var_list=train_vars)
 
         # Horovod: broadcast initial variable states from rank 0 to all other processes.
