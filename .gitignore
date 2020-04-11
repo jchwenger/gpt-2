@@ -4,6 +4,9 @@ models/
 checkpoint
 samples
 
+# tags
+tags
+
 # vim
 *.swp
 *.swo
