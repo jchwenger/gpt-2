@@ -178,17 +178,26 @@ def maketree(path):
 
 
 def randomize(context, hparams, p):
+    """
+    context: the tokens array
+    hparams: the model params (containing n_vocab)
+    p: the noise threshold (between 0 & 1)
+    """
     if p > 0:
+        # uniform mask with true/1 or false/0 wherever value is > or < than p
         mask = tf.random.uniform(shape=tf.shape(context)) < p
+        # random numbers cast to int -> tokens (from 0 to hparams.n_vocab)
         noise = tf.random.uniform(
             shape=tf.shape(context), minval=0, maxval=hparams.n_vocab, dtype=tf.int32
         )
+        # pepper context with noise according to mask
         return tf.where(mask, noise, context)
     else:
         return context
 
 
 def main():
+
     args = parser.parse_args()
     enc = encoder.get_encoder(args.model_name)
     hparams = model.default_hparams()
@@ -205,21 +214,32 @@ def main():
         if args.optimizer == "adam":
             args.only_train_transformer_layers = True
 
+    # default config
     config = tf.ConfigProto()
+    # gradually take place in gpu rather than lock the entire device
     config.gpu_options.allow_growth = True
+    # ??
     config.graph_options.rewrite_options.layout_optimizer = (
         rewriter_config_pb2.RewriterConfig.OFF
     )
+
     with tf.Session(config=config) as sess:
+        # input: batches of tokens, with randomization if noise
         context = tf.placeholder(tf.int32, [args.batch_size, None])
         context_in = randomize(context, hparams, args.noise)
         output = model.model(hparams=hparams, X=context_in)
+        # get average of the error over the whole sequence(s) (context(s)):
+        # how well does the model predict the next character ?
+        # context[: 1:] skip first letter
+        # logits[:, :-1] skip the last prediction
+        # loss: same shape as context/labels, containing the cross entropy loss
         loss = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=context[:, 1:], logits=output["logits"][:, :-1]
             )
         )
 
+        # same for validation
         if args.val_every > 0:
             val_context = tf.placeholder(tf.int32, [args.val_batch_size, None])
             val_output = model.model(hparams=hparams, X=val_context)
@@ -240,6 +260,7 @@ def main():
             top_p=args.top_p,
         )
 
+        # fetch all vars, reduce to transformer layers if needed
         all_vars = [v for v in tf.trainable_variables() if "model" in v.name]
         train_vars = (
             [v for v in all_vars if "/h" in v.name]
@@ -247,6 +268,7 @@ def main():
             else all_vars
         )
 
+        # choose optimizer
         if args.optimizer == "adam":
             opt = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         elif args.optimizer == "sgd":
@@ -254,28 +276,39 @@ def main():
         else:
             exit("Bad optimizer:", args.optimizer)
 
+        # three options
+        # - accumulate gradients
+        # - memory saving gradients
+        # - or vanilla gradients
         if args.accumulate_gradients > 1:
             if args.memory_saving_gradients:
                 exit(
                     "Memory saving gradients are not implemented for gradient accumulation yet."
                 )
+            # wrap optimizer with accmulator, compute & save
             opt = AccumulatingOptimizer(opt=opt, var_list=train_vars)
             opt_reset = opt.reset()
+            # compute & apply gradients
             opt_compute = opt.compute_gradients(loss)
             opt_apply = opt.apply_gradients()
             summary_loss = tf.summary.scalar("loss", opt_apply)
         else:
+            # memory saving gradients or vanilla
             if args.memory_saving_gradients:
                 opt_grads = memory_saving_gradients.gradients(loss, train_vars)
             else:
                 opt_grads = tf.gradients(loss, train_vars)
-            opt_grads = list(zip(opt_grads, train_vars))
-            opt_apply = opt.apply_gradients(opt_grads)
+            opt_grads = list(
+                zip(opt_grads, train_vars)
+            )  # shape into (gradient, variable)
+            # apply_gradient returns the Operation
+            opt_apply = opt.apply_gradients(
+                opt_grads
+            )  # https://www.tensorflow.org/api_docs/python/tf/compat/v1/train/GradientDescentOptimizer#apply_gradients
             summary_loss = tf.summary.scalar("loss", loss)
 
         summary_lr = tf.summary.scalar("learning_rate", args.learning_rate)
         summaries = tf.summary.merge([summary_lr, summary_loss])
-
         summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
 
         saver = tf.train.Saver(
@@ -283,6 +316,8 @@ def main():
         )
         sess.run(tf.global_variables_initializer())
 
+        # restoring checkpoint
+        # TODO: update to non-deprecated ways
         if args.restore_from == "latest":
             ckpt = tf.train.latest_checkpoint(
                 os.path.join(CHECKPOINT_DIR, args.run_name)
@@ -299,7 +334,9 @@ def main():
         print("Loading checkpoint", ckpt)
         saver.restore(sess, ckpt)
 
+        # loading training (& val) dataset, define sampler
         print("Loading dataset...")
+        # TODO: inspect this args.combine argument for good
         chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
         data_sampler = Sampler(chunks)
         if args.val_every > 0:
@@ -358,6 +395,7 @@ def main():
                     all_text.append(text)
                     index += 1
             print(text)
+            # and saving the whole lot to SAMPLE_DIR
             maketree(os.path.join(SAMPLE_DIR, args.run_name))
             with open(
                 os.path.join(SAMPLE_DIR, args.run_name, "samples-{}").format(counter),
@@ -411,6 +449,7 @@ def main():
 
                 summary_log.add_summary(v_summary, counter)
 
+                # TODO: firm intuition for this averaging method
                 avg_loss = (avg_loss[0] * 0.99 + v_loss, avg_loss[1] * 0.99 + 1.0)
 
                 print(
