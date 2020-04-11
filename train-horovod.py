@@ -2,25 +2,28 @@
 # Usage:
 #  PYTHONPATH=src ./train --dataset <file|directory|glob>
 import sys
+
 sys.path.append("/media/default/linux-data/tf/gpt-2/src")
 
-import fire
-import json
-import os
-import numpy as np
 import tensorflow as tf
+import numpy as np
 import random
 import time
+import json
+import fire
+import os
 
 import horovod.tensorflow as hvd
 
 import model, sample, encoder
+import memory_saving_gradients
 from load_dataset import load_dataset, Sampler
 
-CHECKPOINT_DIR = 'checkpoint'
-SAMPLE_DIR = 'samples'
+CHECKPOINT_DIR = "checkpoint"
+SAMPLE_DIR = "samples"
 
 hvd.init()
+
 
 def maketree(path):
     try:
@@ -29,28 +32,36 @@ def maketree(path):
         pass
 
 
-def train_main(dataset,
-               model_name='117M',
-               seed=None,
-               batch_size=2,
-               sample_length=1023,
-               sample_num=1,
-               sample_every=4500,
-               run_name='run1',
-               restore_from='latest',
-               save_every=2000,
-               combine=50000):
+def train_main(
+    dataset,
+    model_name="117M",
+    seed=None,
+    batch_size=1,
+    sample_length=1023,
+    sample_num=1,
+    sample_every=4500,
+    run_name="run1",
+    restore_from="latest",
+    save_every=2000,
+    combine=50000,
+    learning_rate=0.00002,
+    optimizer="sgd",
+    mixed_precision=False,
+    memory_saving_gradients=True,
+    only_train_transformer_layers=True,
+):
 
     enc = encoder.get_encoder(model_name)
     hparams = model.default_hparams()
-    with open(os.path.join('models', model_name, 'hparams.json')) as f:
+    with open(os.path.join("models", model_name, "hparams.json")) as f:
         hparams.override_from_dict(json.load(f))
 
     if sample_length is None:
         sample_length = hparams.n_ctx // 2
     elif sample_length > hparams.n_ctx:
         raise ValueError(
-            "Can't get samples longer than window size: %s" % hparams.n_ctx)
+            "Can't get samples longer than window size: %s" % hparams.n_ctx
+        )
 
     # TF config
 
@@ -65,7 +76,9 @@ def train_main(dataset,
         output = model.model(hparams=hparams, X=context)
         loss = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(
-                labels=context[:, 1:], logits=output['logits'][:, :-1]))
+                labels=context[:, 1:], logits=output["logits"][:, :-1]
+            )
+        )
 
         tf_sample = sample.sample_sequence(
             hparams=hparams,
@@ -73,11 +86,37 @@ def train_main(dataset,
             context=context,
             batch_size=batch_size,
             temperature=0.8,
-            top_k=40)
+            top_k=40,
+        )
 
-        train_vars = [v for v in tf.trainable_variables() if 'model' in v.name]
+        train_vars = [v for v in tf.trainable_variables() if "model" in v.name]
+        train_vars = (
+            [v for v in all_vars if "/h" in v.name]
+            if only_train_transformer_layers
+            else all_vars
+        )
 
-        opt = tf.train.AdamOptimizer()
+        if args.optimizer == "adam":
+            opt = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
+        elif args.optimizer == "sgd":
+            opt = tf.train.GradientDescentOptimizer(learning_rate=args.learning_rate)
+        else:
+            exit("Bad optimizer:", args.optimizer)
+
+        # https://developer.nvidia.com/automatic-mixed-precision
+        if mixed_precision:
+            opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
+
+        if memory_saving_gradients:
+            opt_grads = memory_saving_gradients.gradients(loss, train_vars)
+            opt_grads = list(zip(opt_grads, train_vars))
+            opt_apply = opt.apply_gradients(opt_grads)
+            summary_loss = tf.summary.scalar("loss", opt_apply)
+
+        summary_lr = tf.summary.scalar("learning_rate", args.learning_rate)
+        summaries = tf.summary.merge([summary_lr, summary_loss])
+        summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
+
         opt = hvd.DistributedOptimizer(opt)
         train_op = opt.minimize(loss, var_list=train_vars)
 
@@ -87,57 +126,51 @@ def train_main(dataset,
         bcast = hvd.broadcast_global_variables(0)
 
         saver = tf.train.Saver(
-            var_list=train_vars,
-            max_to_keep=5,
-            keep_checkpoint_every_n_hours=2)
+            var_list=train_vars, max_to_keep=5, keep_checkpoint_every_n_hours=2
+        )
 
         sess.run(tf.global_variables_initializer())
 
-
-        if restore_from == 'latest':
-            ckpt = tf.train.latest_checkpoint(
-                os.path.join(CHECKPOINT_DIR, run_name))
+        if restore_from == "latest":
+            ckpt = tf.train.latest_checkpoint(os.path.join(CHECKPOINT_DIR, run_name))
             if ckpt is None:
                 # Get fresh GPT weights if new run.
-                ckpt = tf.train.latest_checkpoint(
-                    os.path.join('models', model_name))
-        elif restore_from == 'fresh':
-            ckpt = tf.train.latest_checkpoint(
-                os.path.join('models', model_name))
+                ckpt = tf.train.latest_checkpoint(os.path.join("models", model_name))
+        elif restore_from == "fresh":
+            ckpt = tf.train.latest_checkpoint(os.path.join("models", model_name))
         else:
             ckpt = tf.train.latest_checkpoint(restore_from)
-        print(str(hvd.local_rank()), 'Loading checkpoint', ckpt)
+        print(str(hvd.local_rank()), "Loading checkpoint", ckpt)
         saver.restore(sess, ckpt)
 
         bcast.run()
 
-        print(str(hvd.local_rank()), 'Loading dataset...')
+        print(str(hvd.local_rank()), "Loading dataset...")
         chunks = load_dataset(enc, dataset, combine)
         data_sampler = Sampler(chunks)
-        print(str(hvd.local_rank()), 'dataset has', data_sampler.total_size, 'tokens')
-        print(str(hvd.local_rank()), 'Training...')
+        print(str(hvd.local_rank()), "dataset has", data_sampler.total_size, "tokens")
+        print(str(hvd.local_rank()), "Training...")
 
         counter = 1
-        if os.path.exists(os.path.join(CHECKPOINT_DIR, run_name, 'counter')):
+        if os.path.exists(os.path.join(CHECKPOINT_DIR, run_name, "counter")):
             # Load the step number if we're resuming a run
             # Add 1 so we don't immediately try to save again
-            with open(os.path.join(CHECKPOINT_DIR, run_name, 'counter'),
-                      'r') as fp:
+            with open(os.path.join(CHECKPOINT_DIR, run_name, "counter"), "r") as fp:
                 counter = int(fp.read()) + 1
 
         def save():
             maketree(os.path.join(CHECKPOINT_DIR, run_name))
             print(
-                'Saving',
-                os.path.join(CHECKPOINT_DIR, run_name,
-                             'model-{}').format(counter))
+                "Saving",
+                os.path.join(CHECKPOINT_DIR, run_name, "model-{}").format(counter),
+            )
             saver.save(
                 sess,
-                os.path.join(CHECKPOINT_DIR, run_name, 'model'),
-                global_step=counter)
-            with open(os.path.join(CHECKPOINT_DIR, run_name, 'counter'),
-                      'w') as fp:
-                fp.write(str(counter) + '\n')
+                os.path.join(CHECKPOINT_DIR, run_name, "model"),
+                global_step=counter,
+            )
+            with open(os.path.join(CHECKPOINT_DIR, run_name, "counter"), "w") as fp:
+                fp.write(str(counter) + "\n")
 
         def generate_samples():
             context_tokens = data_sampler.sample(1)
@@ -145,18 +178,19 @@ def train_main(dataset,
             index = 0
             while index < sample_num:
                 out = sess.run(
-                    tf_sample, feed_dict={context: batch_size*[context_tokens]})
+                    tf_sample, feed_dict={context: batch_size * [context_tokens]}
+                )
                 for i in range(min(sample_num - index, batch_size)):
                     text = enc.decode(out[i])
-                    text = '======== SAMPLE {} ========\n{}\n'.format(index + 1, text)
+                    text = "======== SAMPLE {} ========\n{}\n".format(index + 1, text)
                     all_text.append(text)
                     index += 1
             print(text)
             maketree(os.path.join(SAMPLE_DIR, run_name))
             with open(
-                    os.path.join(SAMPLE_DIR, run_name,
-                                 'samples-{}').format(counter), 'w') as fp:
-                fp.write('\n'.join(all_text))
+                os.path.join(SAMPLE_DIR, run_name, "samples-{}").format(counter), "w"
+            ) as fp:
+                fp.write("\n".join(all_text))
 
         avg_loss = (0.0, 0.0)
         start_time = time.time()
@@ -166,9 +200,15 @@ def train_main(dataset,
 
                 batch = [data_sampler.sample(1024) for _ in range(batch_size)]
 
-                _, lv = sess.run((train_op, loss), feed_dict={context: batch})
+                (_, v_loss, v_summary) = sess.run(
+                    (opt_apply, loss, summaries),
+                    feed_dict={context: batch},
+                )
+                # _, lv = sess.run((train_op, loss), feed_dict={context: batch})
 
-                avg_loss = (avg_loss[0] * 0.99 + lv, avg_loss[1] * 0.99 + 1.0)
+                summary_log.add_summary(v_summary, counter)
+
+                avg_loss = (avg_loss[0] * 0.99 + v_loss, avg_loss[1] * 0.99 + 1.0)
 
                 if hvd.rank() == 0:
                     if counter % save_every == 0:
@@ -177,20 +217,21 @@ def train_main(dataset,
                         generate_samples()
 
                     print(
-                        '[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f}'
-                        .format(
+                        "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f}".format(
                             counter=counter,
                             time=time.time() - start_time,
-                            loss=lv,
-                            avg=avg_loss[0] / avg_loss[1]))
+                            loss=v_loss,
+                            avg=avg_loss[0] / avg_loss[1],
+                        )
+                    )
 
                 counter += 1
 
         except KeyboardInterrupt:
-            print('interrupted')
+            print("interrupted")
             if hvd.rank() == 0:
                 save()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     fire.Fire(train_main)
