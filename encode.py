@@ -49,7 +49,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "encoder",
+    "--encoder",
     metavar="ENCODER",
     choices=["default", "sentencepiece"],
     default="default",
@@ -65,13 +65,12 @@ def main():
         enc = encoder.get_encoder(args.model_name)
     elif args.encoder == "sentencepiece":
         args.out_npz += f"-sp"
-        if args.model_name == "117M":
-            try:
-                enc = encoder_sp.get_encoder("models", args.model_name)
-            except Exception as e:
-                print("-"*40)
-                print(e)
-                exit("The SentencePiece model is not given by default by OpenAI. Try generate a new one using new_sp_model.py.")
+        try:
+            enc = encoder_sp.get_encoder("models", args.model_name)
+        except Exception as e:
+            print("-"*40)
+            print(e)
+            exit("The SentencePiece model is not given by default by OpenAI. Try generate a new one using new_sp_model.py.")
 
     print("Reading files")
     chunks = load_dataset(enc, args.in_text, args.combine, encoding=args.encoding)
