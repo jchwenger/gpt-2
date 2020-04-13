@@ -4,6 +4,9 @@ models/
 checkpoint
 samples
 
+# npz files
+*.npz
+
 # tags
 tags
 
