@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # Usage:
 #  PYTHONPATH=src ./train --dataset <file|directory|glob>
-import sys
-sys.path.append("/media/default/linux-data/tf/gpt-2/src")
 
 import os
 import json
@@ -14,6 +12,7 @@ import tensorflow as tf
 from tensorflow.core.protobuf import rewriter_config_pb2
 
 import model, sample, encoder
+import encoder_sp as encoder_sp
 import memory_saving_gradients
 from accumulate import AccumulatingOptimizer
 from load_dataset import load_dataset, Sampler
@@ -180,6 +179,15 @@ parser.add_argument(
     help="Calculate validation loss every STEPS steps.",
 )
 
+parser.add_argument(
+    "--encoder",
+    # metavar="ENCODER",
+    choices=["default", "sentencepiece"],
+    default="default",
+    type=str,
+    help="Type of encoder. Choices: default, sentencepiece. Default: default",
+)
+
 
 def maketree(path):
     try:
@@ -201,7 +209,10 @@ def randomize(context, hparams, p):
 
 def main():
     args = parser.parse_args()
-    enc = encoder.get_encoder(args.model_name)
+    if args.encoder == 'default':
+        enc = encoder.get_encoder(args.model_name)
+    elif args.encoder == 'sentencepiece':
+        enc = encoder_sp.get_encoder("models", args.model_name)
     hparams = model.default_hparams()
     with open(os.path.join("models", args.model_name, "hparams.json")) as f:
         hparams.override_from_dict(json.load(f))
