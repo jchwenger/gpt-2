@@ -104,16 +104,18 @@ def train_main(
         else:
             exit("Bad optimizer:", args.optimizer)
 
+        if memory_saving_gradients:
+            opt_grads = memory_saving_gradients.gradients(loss, train_vars)
+        else:
+            opt_grads = tf.gradients(loss, train_vars)
+        opt_grads = list(zip(opt_grads, train_vars))
+        opt_apply = opt.apply_gradients(opt_grads)
+
         # https://developer.nvidia.com/automatic-mixed-precision
         if mixed_precision:
             opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
 
-        if memory_saving_gradients:
-            opt_grads = memory_saving_gradients.gradients(loss, train_vars)
-            opt_grads = list(zip(opt_grads, train_vars))
-            opt_apply = opt.apply_gradients(opt_grads)
-            summary_loss = tf.summary.scalar("loss", opt_apply)
-
+        summary_loss = tf.summary.scalar("loss", opt_apply)
         summary_lr = tf.summary.scalar("learning_rate", args.learning_rate)
         summaries = tf.summary.merge([summary_lr, summary_loss])
         summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
