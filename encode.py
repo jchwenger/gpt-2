@@ -43,9 +43,9 @@ parser.add_argument(
 
 parser.add_argument(
     "out_npz",
-    metavar="OUT.npz",
+    metavar="OUT",
     type=str,
-    help="Output file path"
+    help="Output file name. Model name will be added to the name. If SentencePiece, '-sp' will be added after the name. '.npz' will be automatically added."
 )
 
 parser.add_argument(
@@ -60,9 +60,11 @@ parser.add_argument(
 
 def main():
     args = parser.parse_args()
+    args.out_npz += f"-{args.model_name}"
     if args.encoder == "default":
         enc = encoder.get_encoder(args.model_name)
     elif args.encoder == "sentencepiece":
+        args.out_npz += f"-sp"
         if args.model_name == "117M":
             try:
                 enc = encoder_sp.get_encoder("models", args.model_name)
