@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # Usage:
 #  PYTHONPATH=src ./train --dataset <file|directory|glob>
-import sys
-
-sys.path.append("/media/default/linux-data/tf/gpt-2/src")
 
 import tensorflow as tf
 import numpy as np
@@ -16,6 +13,7 @@ import os
 import horovod.tensorflow as hvd
 
 import model, sample, encoder
+import encoder_sp as encoder_sp
 import memory_saving_gradients
 from load_dataset import load_dataset, Sampler
 
@@ -50,10 +48,13 @@ def train_main(
     memory_saving_gradients=True,
     only_train_transformer_layers=True,
     allreduce_on_cpu=False,
+    encoder="default",
 ):
 
-    enc = encoder.get_encoder(model_name)
-    hparams = model.default_hparams()
+    if encoder == "default":
+        enc = encoder.get_encoder(model_name)
+    elif encoder == 'sentencepiece':
+        enc = encoder_sp.get_encoder("models", model_name)
     with open(os.path.join("models", model_name, "hparams.json")) as f:
         hparams.override_from_dict(json.load(f))
 
