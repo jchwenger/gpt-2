@@ -12,7 +12,7 @@ class Encoder:
         return self.sp.EncodeAsIds(text)
 
     def decode(self, tokens):
-        return self.sp.DecodeIds(tokens.tolist()).replace("<|n|>", "\n")
+        return self.sp.DecodeIds(tokens.tolist())
 
 
 def get_encoder(models_dir, model_name):
