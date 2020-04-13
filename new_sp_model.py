@@ -28,6 +28,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--source_name",
+    required=True,
+    help="Source dataset name. Required."
+)
+
+parser.add_argument(
     "--pretrained_model",
     default="117M",
     help="Pretrained model. Default 117M."
@@ -150,8 +156,8 @@ def train_sp(args):
         print(f"generating {args.model_name}-{args.pretrained_model}.npz")
         enc = encoder_sp.get_encoder("models", args.model_name)
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
-        print(f"writing {args.model_name}-{args.pretrained_model}.npz")
-        np.savez_compressed(f"{args.model_name}-{args.pretrained_model}", *chunks)
+        print(f"writing {args.source_name}-{args.model_name}-{args.pretrained_model}-sp.npz")
+        np.savez_compressed(f"{args.source_name}-args.model_name}-{args.pretrained_model}-sp", *chunks)
 
 
 def print_separator():
