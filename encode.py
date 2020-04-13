@@ -18,7 +18,7 @@ parser.add_argument(
     "--model_name",
     metavar="MODEL",
     type=str,
-    default="1558M",
+    default="117M",
     help="Pretrained model name",
 )
 parser.add_argument(
