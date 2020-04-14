@@ -99,12 +99,12 @@ def train_main(
             else all_vars
         )
 
-        if args.optimizer == "adam":
-            opt = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
-        elif args.optimizer == "sgd":
-            opt = tf.train.GradientDescentOptimizer(learning_rate=args.learning_rate)
+        if optimizer == "adam":
+            opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        elif optimizer == "sgd":
+            opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         else:
-            exit("Bad optimizer:", args.optimizer)
+            exit("Bad optimizer:", optimizer)
 
         if memory_saving_gradients:
             opt_grads = memory_saving_gradients.gradients(loss, train_vars)
@@ -118,9 +118,9 @@ def train_main(
             opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
 
         summary_loss = tf.summary.scalar("loss", opt_apply)
-        summary_lr = tf.summary.scalar("learning_rate", args.learning_rate)
+        summary_lr = tf.summary.scalar("learning_rate", learning_rate)
         summaries = tf.summary.merge([summary_lr, summary_loss])
-        summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
+        summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, run_name))
 
         # bottom of that pages:
         # https://github.com/horovod/horovod/blob/80167f6dea0ba6b853d790a3d3a342368811f0da/docs/gpus.rst
