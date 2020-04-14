@@ -70,7 +70,7 @@ parser.add_argument(
     "--character_coverage",
     type=float,
     default=1.0,
-    help="Char coverage, default: 1.0 (100%) for non-ideogram languages."
+    help="Char coverage, default: 1.0 -- 100% -- for non-ideogram languages."
 )
 
 parser.add_argument(
