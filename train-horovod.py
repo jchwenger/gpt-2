@@ -14,7 +14,7 @@ import horovod.tensorflow as hvd
 
 import model, sample, encoder
 import encoder_sp as encoder_sp
-import memory_saving_gradients
+import memory_saving_gradients as msv
 from load_dataset import load_dataset, Sampler
 
 CHECKPOINT_DIR = "checkpoint"
@@ -107,7 +107,7 @@ def train_main(
             exit("Bad optimizer:", optimizer)
 
         if memory_saving_gradients:
-            opt_grads = memory_saving_gradients.gradients(loss, train_vars)
+            opt_grads = msv.gradients(loss, train_vars)
         else:
             opt_grads = tf.gradients(loss, train_vars)
         opt_grads = list(zip(opt_grads, train_vars))
