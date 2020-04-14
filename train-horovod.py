@@ -92,7 +92,7 @@ def train_main(
             top_k=40,
         )
 
-        train_vars = [v for v in tf.trainable_variables() if "model" in v.name]
+        all_vars = [v for v in tf.trainable_variables() if "model" in v.name]
         train_vars = (
             [v for v in all_vars if "/h" in v.name]
             if only_train_transformer_layers
