@@ -153,13 +153,13 @@ def train_main(
         print(str(hvd.local_rank()), "Loading checkpoint", ckpt)
         saver.restore(sess, ckpt)
 
-        bcast.run()
-
         print(str(hvd.local_rank()), "Loading dataset...")
         chunks = load_dataset(enc, dataset, combine)
         data_sampler = Sampler(chunks)
         print(str(hvd.local_rank()), "dataset has", data_sampler.total_size, "tokens")
         print(str(hvd.local_rank()), "Training...")
+
+        bcast.run()
 
         counter = 1
         if os.path.exists(os.path.join(CHECKPOINT_DIR, run_name, "counter")):
