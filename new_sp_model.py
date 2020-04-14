@@ -89,7 +89,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--encode_npz",
+    "--skip_encoding_npz",
     action='store_true',
     help="Create a npz file of the dataset for training."
 )
@@ -151,9 +151,9 @@ def train_sp(args):
     for f in ckpt_fnames:
         copyfile(os.path.join(src_dir, f), os.path.join(dest_dir, f))
 
-    if args.encode_npz == True:
+    if not args.skip_encoding_npz:
         print_separator()
-        print(f"generating {args.model_name}-{args.pretrained_model}.npz")
+        print(f"generating {args.source_name}-{args.model_name}-{args.pretrained_model}.npz")
         enc = encoder_sp.get_encoder("models", args.model_name)
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
         print(f"writing {args.source_name}-{args.model_name}-{args.pretrained_model}-sp.npz")
