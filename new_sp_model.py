@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(
     Add the appropriate files to new model folder in "models"
     (Copying the pretrained model checkpoint as a starting ground.)
     """,
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 
 parser.add_argument(
@@ -63,14 +63,14 @@ parser.add_argument(
     "--vocab_size",
     type=int,
     default=50000,
-    help="Default: 50000."
+    help="Default: 50001."
 )
 
 parser.add_argument(
     "--character_coverage",
     type=float,
     default=1.0,
-    help="Char coverage, default: 1.0 -- 100% -- for non-ideogram languages."
+    help="Char coverage, default: 1.0 (100%%) for non-ideogram languages."
 )
 
 parser.add_argument(
