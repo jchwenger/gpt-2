@@ -117,10 +117,10 @@ def train_main(
         if mixed_precision:
             opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
 
-        summary_loss = tf.summary.scalar("loss", opt_apply)
-        summary_lr = tf.summary.scalar("learning_rate", learning_rate)
-        summaries = tf.summary.merge([summary_lr, summary_loss])
-        summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, run_name))
+        # summary_loss = tf.summary.scalar("loss", loss)
+        # summary_lr = tf.summary.scalar("learning_rate", learning_rate)
+        # summaries = tf.summary.merge([summary_lr, summary_loss])
+        # summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, run_name))
 
         # bottom of that pages:
         # https://github.com/horovod/horovod/blob/80167f6dea0ba6b853d790a3d3a342368811f0da/docs/gpus.rst
@@ -210,13 +210,20 @@ def train_main(
 
                 batch = [data_sampler.sample(1024) for _ in range(batch_size)]
 
-                (_, v_loss, v_summary) = sess.run(
-                    (opt_apply, loss, summaries),
+                (_, v_loss) = sess.run(
+                    (opt_apply, loss),
                     feed_dict={context: batch},
                 )
+
+                # _, lv = sess.run((train_op, loss), feed_dict={context: batch})
+                # (_, v_loss, v_summary) = sess.run(
+                #     (opt_apply, loss, summaries),
+                #     feed_dict={context: batch},
+                # )
+
                 # _, lv = sess.run((train_op, loss), feed_dict={context: batch})
 
-                summary_log.add_summary(v_summary, counter)
+                # summary_log.add_summary(v_summary, counter)
 
                 avg_loss = (avg_loss[0] * 0.99 + v_loss, avg_loss[1] * 0.99 + 1.0)
 
