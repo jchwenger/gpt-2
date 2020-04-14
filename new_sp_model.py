@@ -157,7 +157,7 @@ def train_sp(args):
         enc = encoder_sp.get_encoder("models", args.model_name)
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
         print(f"writing {args.source_name}-{args.model_name}-{args.pretrained_model}-sp.npz")
-        np.savez_compressed(f"{args.source_name}-args.model_name}-{args.pretrained_model}-sp", *chunks)
+        np.savez_compressed(f"{args.source_name}-{args.model_name}-{args.pretrained_model}-sp", *chunks)
 
 
 def print_separator():
