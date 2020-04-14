@@ -48,7 +48,7 @@ def train_main(
     memory_saving_gradients=True,
     only_train_transformer_layers=True,
     allreduce_on_cpu=False,
-    encoder="default",
+    encoder_type="default",
 ):
 
     if encoder == "default":
