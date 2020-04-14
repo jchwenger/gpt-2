@@ -51,9 +51,9 @@ def train_main(
     encoder_type="default",
 ):
 
-    if encoder == "default":
+    if encoder_type == "default":
         enc = encoder.get_encoder(model_name)
-    elif encoder == 'sentencepiece':
+    elif encoder_type == 'sentencepiece':
         enc = encoder_sp.get_encoder("models", model_name)
     hparams = model.default_hparams()
     with open(os.path.join("models", model_name, "hparams.json")) as f:
