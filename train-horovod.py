@@ -215,7 +215,7 @@ def train_main(
 
                 if hvd.rank() == 0:
                     (_, v_loss, v_summary) = sess.run(
-                        (opt_apply, loss, summaries),
+                        (train_op, loss, summaries),
                         feed_dict={context: batch},
                     )
 
