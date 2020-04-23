@@ -301,7 +301,7 @@ def main():
         summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
 
         saver = tf.train.Saver(
-            var_list=all_vars, max_to_keep=5, keep_checkpoint_every_n_hours=2
+            var_list=all_vars, max_to_keep=1, keep_checkpoint_every_n_hours=8
         )
         sess.run(tf.global_variables_initializer())
 
