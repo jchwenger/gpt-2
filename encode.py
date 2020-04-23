@@ -74,7 +74,7 @@ def main():
 
     print("Reading files")
     chunks = load_dataset(enc, args.in_text, args.combine, encoding=args.encoding)
-    print("Writing", args.out_npz)
+    print(f"Writing {args.out_npz}.npz")
     np.savez_compressed(args.out_npz, *chunks)
 
 
