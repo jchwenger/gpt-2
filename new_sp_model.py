@@ -28,12 +28,6 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--source_name",
-    required=True,
-    help="Source dataset name. Required."
-)
-
-parser.add_argument(
     "--pretrained_model",
     default="117M",
     help="Pretrained model. Default 117M."
@@ -81,6 +75,21 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--input_sentence_size",
+    type=int,
+    default=1000000,
+    help="""Number of sentences to be sampled during sp training. Defaults to 1000000.
+    """
+)
+
+parser.add_argument(
+    "--shuffle_input_sentence",
+    type=bool,
+    default=True,
+    help="""Shuffle input sentences. Defaults to true."""
+)
+
+parser.add_argument(
     "--control_symbols",
     type=str,
     help="""List of specific markers present in the dataset.
@@ -125,7 +134,9 @@ def train_sp(args):
               --model_prefix={args.sp_model_name}\
               --vocab_size={args.vocab_size}\
               --character_coverage={args.character_coverage}\
-              --model_type={args.sp_model_type}"
+              --model_type={args.sp_model_type}\
+              --input_sentence_size={args.input_sentence_size}\
+              --shuffle_input_sentence={args.shuffle_input_sentence}"
     if args.control_symbols:
         cmd += f" --control_symbols={args.control_symbols}"
     spm.SentencePieceTrainer.Train(cmd)
@@ -153,11 +164,11 @@ def train_sp(args):
 
     if not args.skip_encoding_npz:
         print_separator()
-        print(f"generating {args.source_name}-{args.model_name}-{args.pretrained_model}.npz")
+        print(f"generating encoding")
         enc = encoder_sp.get_encoder("models", args.model_name)
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
-        print(f"writing {args.source_name}-{args.model_name}-{args.pretrained_model}-sp.npz")
-        np.savez_compressed(f"{args.source_name}-{args.model_name}-{args.pretrained_model}-sp", *chunks)
+        print(f"writing {args.model_name}-{args.pretrained_model}-sp.npz")
+        np.savez_compressed(f"{args.model_name}-{args.pretrained_model}-sp", *chunks)
 
 
 def print_separator():
