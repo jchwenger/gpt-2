@@ -99,6 +99,8 @@ def train_main(
             else all_vars
         )
 
+        learning_rate = learning_rate * hvd.size()
+
         if optimizer == "adam":
             opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
         elif optimizer == "sgd":
