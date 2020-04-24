@@ -219,43 +219,42 @@ def train_main(
         avg_loss = (0.0, 0.0)
         start_time = time.time()
 
-        try:
-            while True:
+        while True:
 
-                batch = [data_sampler.sample(1024) for _ in range(batch_size)]
+            batch = [data_sampler.sample(1024) for _ in range(batch_size)]
 
-                if hvd.rank() == 0:
-                    (_, v_loss, v_summary) = sess.run(
-                        (train_op, loss, summaries),
-                        feed_dict={context: batch},
+            if hvd.rank() == 0:
+                (_, v_loss, v_summary) = sess.run(
+                    (train_op, loss, summaries),
+                    feed_dict={context: batch},
+                )
+
+                summary_log.add_summary(v_summary, counter)
+
+                avg_loss = (avg_loss[0] * 0.99 + v_loss, avg_loss[1] * 0.99 + 1.0)
+
+                counter += 1
+
+                if counter % save_every == 0:
+                    save()
+                if counter % sample_every == 0:
+                    generate_samples()
+
+                print(
+                    "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f}".format(
+                        counter=counter,
+                        time=time.time() - start_time,
+                        loss=v_loss,
+                        avg=avg_loss[0] / avg_loss[1],
                     )
+                )
 
-                    summary_log.add_summary(v_summary, counter)
+            else:
 
-                    avg_loss = (avg_loss[0] * 0.99 + v_loss, avg_loss[1] * 0.99 + 1.0)
-
-                    counter += 1
-
-                    if counter % save_every == 0:
-                        save()
-                    if counter % sample_every == 0:
-                        generate_samples()
-
-                    print(
-                        "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f}".format(
-                            counter=counter,
-                            time=time.time() - start_time,
-                            loss=v_loss,
-                            avg=avg_loss[0] / avg_loss[1],
-                        )
-                    )
-
-                else:
-
-                    (_, v_loss) = sess.run(
-                        (train_op, loss),
-                        feed_dict={context: batch},
-                    )
+                (_, v_loss) = sess.run(
+                    (train_op, loss),
+                    feed_dict={context: batch},
+                )
 
 
 if __name__ == "__main__":
