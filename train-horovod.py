@@ -188,7 +188,7 @@ def train_main(
 
         #----------------------------------------
 
-        for now commented, until further experimentations
+        # for now commented, until further experimentations
         # https://github.com/horovod/horovod/issues/1903#issuecomment-618721148
         def on_exit():
             if hvd.rank() == 0:
