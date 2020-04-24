@@ -5,6 +5,7 @@
 import tensorflow as tf
 import numpy as np
 import random
+import signal
 import time
 import json
 import fire
@@ -185,6 +186,16 @@ def train_main(
             with open(os.path.join(CHECKPOINT_DIR, run_name, "counter"), "w") as fp:
                 fp.write(str(counter) + "\n")
 
+        # https://github.com/horovod/horovod/issues/1903#issuecomment-618721148
+        def on_exit():
+            if hvd.rank() == 0:
+                print("interrupted")
+                save()
+
+        # assigning exit to SIGINT/SIGTERM
+        signal.signal(signal.SIGINT, on_exit)
+        signal.signal(signal.SIGTERM, on_exit)
+
         def generate_samples():
             context_tokens = data_sampler.sample(1)
             all_text = []
@@ -245,11 +256,6 @@ def train_main(
                         (train_op, loss),
                         feed_dict={context: batch},
                     )
-
-        except KeyboardInterrupt:
-            print("interrupted")
-            if hvd.rank() == 0:
-                save()
 
 
 if __name__ == "__main__":
