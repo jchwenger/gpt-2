@@ -188,37 +188,38 @@ def train_main(
 
         #----------------------------------------
 
-        # for now commented, until further experimentations
-        # # https://github.com/horovod/horovod/issues/1903#issuecomment-618721148
-        # def on_exit():
-        #     if hvd.rank() == 0:
-        #         print("interrupted")
-        #         save()
+        for now commented, until further experimentations
+        # https://github.com/horovod/horovod/issues/1903#issuecomment-618721148
+        def on_exit():
+            if hvd.rank() == 0:
+                print("interrupted")
+                save()
 
         # # assigning exit to SIGINT/SIGTERM
+        signal.signal(signal.SIGCONT, on_exit)
         # signal.signal(signal.SIGINT, on_exit)
         # signal.signal(signal.SIGTERM, on_exit)
 
         # other method: print all signals to see which one it is
         # https://stackoverflow.com/a/2148925
 
-        def handler(signum, frame):
-            print(f"\033[92;1;6m\t>>> SIGNAL HANDLER CALLED WITH SIGNAL: {signum}\033[0m")
-            exit()
+        # def handler(signum, frame):
+        #     print(f"\033[92;1;6m\t>>> SIGNAL HANDLER CALLED WITH SIGNAL: {signum}\033[0m")
+        #     exit()
 
-        print("looping through signals")
-        for i in [x for x in dir(signal) if x.startswith("SIG")]:
-            print(f"signal: {i}", end="")
-            try:
-                signum = getattr(signal,i)
-                try:
-                    signal.signal(signum, handler)
-                    print(f" | ok, set up {signum}")
-                except Exception as e:
-                    print()
-                    print("\toops:", e)
-            except (OSError, RuntimeError) as m: #OSError for Python3, RuntimeError for 2
-                print (f" | skipping")
+        # print("looping through signals")
+        # for i in [x for x in dir(signal) if x.startswith("SIG")]:
+        #     print(f"signal: {i}", end="")
+        #     try:
+        #         signum = getattr(signal,i)
+        #         try:
+        #             signal.signal(signum, handler)
+        #             print(f" | ok, set up {signum}")
+        #         except Exception as e:
+        #             print()
+        #             print("\toops:", e)
+        #     except (OSError, RuntimeError) as m: #OSError for Python3, RuntimeError for 2
+        #         print (f" | skipping")
 
         #----------------------------------------
 
