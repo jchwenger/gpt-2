@@ -227,13 +227,13 @@ def main():
         if args.optimizer == "adam":
             args.only_train_transformer_layers = True
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     config.graph_options.rewrite_options.layout_optimizer = (
         rewriter_config_pb2.RewriterConfig.OFF
     )
-    with tf.Session(config=config) as sess:
-        context = tf.placeholder(tf.int32, [args.batch_size, None])
+    with tf.compat.v1.Session(config=config) as sess:
+        context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
         context_in = randomize(context, hparams, args.noise)
         output = model.model(hparams=hparams, X=context_in)
         loss = tf.reduce_mean(
@@ -243,7 +243,7 @@ def main():
         )
 
         if args.val_every > 0:
-            val_context = tf.placeholder(tf.int32, [args.val_batch_size, None])
+            val_context = tf.compat.v1.placeholder(tf.int32, [args.val_batch_size, None])
             val_output = model.model(hparams=hparams, X=val_context)
             val_loss = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -262,7 +262,7 @@ def main():
             top_p=args.top_p,
         )
 
-        all_vars = [v for v in tf.trainable_variables() if "model" in v.name]
+        all_vars = [v for v in tf.compat.v1.trainable_variables() if "model" in v.name]
         train_vars = (
             [v for v in all_vars if "/h" in v.name]
             if args.only_train_transformer_layers
@@ -270,7 +270,7 @@ def main():
         )
 
         if args.optimizer == "adam":
-            opt = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
+            opt = tf.compat.v1.train.AdamOptimizer(learning_rate=args.learning_rate)
         elif args.optimizer == "sgd":
             opt = tf.train.GradientDescentOptimizer(learning_rate=args.learning_rate)
         else:
@@ -285,7 +285,7 @@ def main():
             opt_reset = opt.reset()
             opt_compute = opt.compute_gradients(loss)
             opt_apply = opt.apply_gradients()
-            summary_loss = tf.summary.scalar("loss", opt_apply)
+            summary_loss = tf.compat.v1.summary.scalar("loss", opt_apply)
         else:
             if args.memory_saving_gradients:
                 opt_grads = memory_saving_gradients.gradients(loss, train_vars)
@@ -293,17 +293,17 @@ def main():
                 opt_grads = tf.gradients(loss, train_vars)
             opt_grads = list(zip(opt_grads, train_vars))
             opt_apply = opt.apply_gradients(opt_grads)
-            summary_loss = tf.summary.scalar("loss", loss)
+            summary_loss = tf.compat.v1.summary.scalar("loss", loss)
 
-        summary_lr = tf.summary.scalar("learning_rate", args.learning_rate)
-        summaries = tf.summary.merge([summary_lr, summary_loss])
+        summary_lr = tf.compat.v1.summary.scalar("learning_rate", args.learning_rate)
+        summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
 
-        summary_log = tf.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
+        summary_log = tf.compat.v1.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
 
-        saver = tf.train.Saver(
+        saver = tf.compat.v1.train.Saver(
             var_list=all_vars, max_to_keep=1, keep_checkpoint_every_n_hours=8
         )
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
 
         if args.restore_from == "latest":
             ckpt = tf.train.latest_checkpoint(
