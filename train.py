@@ -318,8 +318,9 @@ def main():
             ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
         else:
             ckpt = tf.train.latest_checkpoint(args.restore_from)
-        print("Loading checkpoint", ckpt)
-        saver.restore(sess, ckpt)
+        if ckpt is not None:
+            print("Loading checkpoint", ckpt)
+            saver.restore(sess, ckpt)
 
         print("Loading dataset...")
         chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
