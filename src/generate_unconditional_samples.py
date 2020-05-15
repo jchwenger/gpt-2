@@ -10,8 +10,9 @@ import model, sample, encoder
 
 def sample_model(
     model_name='117M',
+    run_name='run1',
     seed=None,
-    nsamples=0,
+    nsamples=1,
     batch_size=1,
     length=None,
     temperature=1,
@@ -39,7 +40,7 @@ def sample_model(
     :top_p=0.0 : Float value controlling diversity. Implements nucleus sampling,
      overriding top_k if set to a value > 0. A good setting is 0.9.
     """
-    enc = encoder.get_encoder(model_name)
+    enc = encoder.get_encoder(model_name, 'models')
     hparams = model.default_hparams()
     with open(os.path.join('models', model_name, 'hparams.json')) as f:
         hparams.override_from_dict(json.load(f))
@@ -61,7 +62,7 @@ def sample_model(
         )[:, 1:]
 
         saver = tf.train.Saver()
-        ckpt = tf.train.latest_checkpoint(os.path.join('models', model_name))
+        ckpt = tf.train.latest_checkpoint(os.path.join('checkpoint', run_name))
         saver.restore(sess, ckpt)
 
         generated = 0

@@ -210,7 +210,7 @@ def randomize(context, hparams, p):
 def main():
     args = parser.parse_args()
     if args.encoder == 'default':
-        enc = encoder.get_encoder(args.model_name)
+        enc = encoder.get_encoder(args.model_name, "models")
     elif args.encoder == 'sentencepiece':
         enc = encoder_sp.get_encoder("models", args.model_name)
     hparams = model.default_hparams()
