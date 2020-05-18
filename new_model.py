@@ -118,7 +118,7 @@ def train(args):
         os.makedirs(model_dir)
     fname = "hparams.json"
     if args.from_pretrained:
-        source_params = (os.path.join("models", args.from_pretrained, fname),)
+        source_params = (os.path.join("models", args.from_pretrained, fname))
         shutil.copyfile(
             source_params, os.path.join(model_dir, fname),
         )
