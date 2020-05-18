@@ -7,7 +7,8 @@ import argparse
 import numpy as np
 
 import encoder
-import encoder_sp as encoder_sp
+import encoder_sp
+import encoder_hug
 from load_dataset import load_dataset
 
 parser = argparse.ArgumentParser(
@@ -51,10 +52,10 @@ parser.add_argument(
 parser.add_argument(
     "--encoder",
     metavar="ENCODER",
-    choices=["default", "sentencepiece"],
+    choices=["default", "sentencepiece", "huggingface"],
     default="default",
     type=str,
-    help="Type of encoder. Choices: default, sentencepiece. Default: default provided by OpenAI, src/encoder.py",
+    help="Type of encoder. Choices: default, sentencepiece, hugginface. Default: default provided by OpenAI, src/encoder.py",
 )
 
 
@@ -71,6 +72,8 @@ def main():
             print("-"*40)
             print(e)
             exit("The SentencePiece model is not given by default by OpenAI. Try generate a new one using new_sp_model.py.")
+    elif args.encoder == "huggingface":
+        enc = encoder_hug.get_encoder(args.model_name, "models")
 
     print("Reading files")
     chunks = load_dataset(enc, args.in_text, args.combine, encoding=args.encoding)
