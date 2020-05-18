@@ -62,7 +62,7 @@ def main():
     args = parser.parse_args()
     args.out_npz += f"-{args.model_name}"
     if args.encoder == "default":
-        enc = encoder.get_encoder(args.model_name)
+        enc = encoder.get_encoder(args.model_name, "models")
     elif args.encoder == "sentencepiece":
         args.out_npz += f"-sp"
         try:
