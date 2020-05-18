@@ -50,6 +50,7 @@ def train_main(
     only_train_transformer_layers=True,
     allreduce_on_cpu=False,
     encoder_type="default",
+    reverse=False,
 ):
 
     if encoder_type == "default":
@@ -161,6 +162,8 @@ def train_main(
 
         print(str(hvd.local_rank()), "Loading dataset...")
         chunks = load_dataset(enc, dataset, combine)
+        if args.reverse:
+            chunks = [c[::-1] for c in chunks]
         data_sampler = Sampler(chunks)
         print(str(hvd.local_rank()), "dataset has", data_sampler.total_size, "tokens")
         print(str(hvd.local_rank()), "Training...")

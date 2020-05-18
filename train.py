@@ -189,6 +189,13 @@ parser.add_argument(
 )
 
 
+parser.add_argument(
+    "--reverse",
+    action="store_true",
+    help="Train on reversed token sequences",
+)
+
+
 def maketree(path):
     try:
         os.makedirs(path)
@@ -324,12 +331,15 @@ def main():
 
         print("Loading dataset...")
         chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
+        if args.reverse:
+            chunks = [c[::-1] for c in chunks]
         data_sampler = Sampler(chunks)
         if args.val_every > 0:
             if args.val_dataset:
                 val_chunks = load_dataset(
                     enc, args.val_dataset, args.combine, encoding=args.encoding
                 )
+                val_chunks = [c[::-1] for c in val_chunks]
             else:
                 val_chunks = chunks
         print("dataset has", data_sampler.total_size, "tokens")
