@@ -56,7 +56,7 @@ def train_main(
     if encoder_type == "default":
         enc = encoder.get_encoder(model_name)
     elif encoder_type == 'sentencepiece':
-        enc = encoder_sp.get_encoder("models", model_name)
+        enc = encoder_sp.get_encoder(model_name, "models")
     hparams = model.default_hparams()
     with open(os.path.join("models", model_name, "hparams.json")) as f:
         hparams.override_from_dict(json.load(f))

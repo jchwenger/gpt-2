@@ -219,7 +219,7 @@ def main():
     if args.encoder == 'default':
         enc = encoder.get_encoder(args.model_name, "models")
     elif args.encoder == 'sentencepiece':
-        enc = encoder_sp.get_encoder("models", args.model_name)
+        enc = encoder_sp.get_encoder(args.model_name, "models")
     hparams = model.default_hparams()
     with open(os.path.join("models", args.model_name, "hparams.json")) as f:
         hparams.override_from_dict(json.load(f))

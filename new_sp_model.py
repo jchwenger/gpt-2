@@ -165,7 +165,7 @@ def train_sp(args):
     if not args.skip_encoding_npz:
         print_separator()
         print(f"generating encoding")
-        enc = encoder_sp.get_encoder("models", args.model_name)
+        enc = encoder_sp.get_encoder(args.model_name, "models")
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
         print(f"writing {args.model_name}-{args.pretrained_model}-sp.npz")
         np.savez_compressed(f"{args.model_name}-{args.pretrained_model}-sp", *chunks)

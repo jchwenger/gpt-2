@@ -15,5 +15,5 @@ class Encoder:
         return self.sp.DecodeIds(tokens.tolist())
 
 
-def get_encoder(models_dir, model_name):
+def get_encoder(model_name, models_dir="models"):
     return Encoder(os.path.join(models_dir, model_name, "sp.model"))

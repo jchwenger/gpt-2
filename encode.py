@@ -66,7 +66,7 @@ def main():
     elif args.encoder == "sentencepiece":
         args.out_npz += f"-sp"
         try:
-            enc = encoder_sp.get_encoder("models", args.model_name)
+            enc = encoder_sp.get_encoder(args.model_name, "models")
         except Exception as e:
             print("-"*40)
             print(e)
