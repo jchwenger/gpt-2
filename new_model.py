@@ -137,7 +137,7 @@ def train(args):
     fnames = [
         f
         for f in glob.glob(os.path.join(args.source, "**"), recursive=True)
-        if not f.startswith(".") and os.path.isfile(f)
+        if os.path.isfile(f)
     ]
     tok.train(fnames, vocab_size=args.vocab_size, special_tokens=args.special_tokens)
     tok.save(directory=model_dir)
