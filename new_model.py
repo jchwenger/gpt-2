@@ -2,6 +2,7 @@
 """Do not forget to use PYTHONPATH=src python new_model.py ... [args]..."""
 import os
 import json
+import glob
 import shutil
 import encoder
 import argparse
@@ -118,7 +119,7 @@ def train(args):
         os.makedirs(model_dir)
     fname = "hparams.json"
     if args.from_pretrained:
-        source_params = (os.path.join("models", args.from_pretrained, fname))
+        source_params = os.path.join("models", args.from_pretrained, fname)
         shutil.copyfile(
             source_params, os.path.join(model_dir, fname),
         )
@@ -133,9 +134,12 @@ def train(args):
 
     underprint("training:")
     tok = ByteLevelBPETokenizer()
-    tok.train(
-        args.source, vocab_size=args.vocab_size, special_tokens=args.special_tokens
-    )
+    fnames = [
+        f
+        for f in glob.glob(os.path.join(args.source, "**"), recursive=True)
+        if not f.startswith(".") and os.path.isfile(f)
+    ]
+    tok.train(fnames, vocab_size=args.vocab_size, special_tokens=args.special_tokens)
     tok.save(directory=model_dir)
     os.rename(
         os.path.join(model_dir, "merges.txt"), os.path.join(model_dir, "vocab.bpe")
