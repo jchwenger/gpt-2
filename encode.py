@@ -55,7 +55,7 @@ parser.add_argument(
     choices=["default", "sentencepiece", "huggingface"],
     default="default",
     type=str,
-    help="Type of encoder. Choices: default, sentencepiece, hugginface. Default: default provided by OpenAI, src/encoder.py",
+    help="Type of encoder. Choices: default, sentencepiece, huggingface. Default: default provided by OpenAI, src/encoder.py",
 )
 
 
