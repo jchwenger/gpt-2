@@ -4,8 +4,8 @@ import os
 import json
 import glob
 import shutil
-import encoder
 import argparse
+import encoder_hug
 import numpy as np
 from load_dataset import load_dataset
 from tokenizers import ByteLevelBPETokenizer
@@ -150,9 +150,15 @@ def train(args):
 
     if not args.skip_encoding_npz:
         underprint(f"generating npz encoding")
-        enc = encoder.get_encoder(args.model_name, "models")
+        enc = encoder_hug.get_encoder(args.model_name, "models")
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
-        source_name = os.path.splitext(os.path.basename(args.source))[0]
+        # a txt file, we take only its name
+        if args.source.endswith('.txt'):
+            source_name = os.path.splitext(os.path.basename(args.source))[0]
+        elif args.source.endswith('/'): # a dir ending in /
+            source_name = os.path.basename(args.source[:-1])
+        else: # just a dir
+            source_name = os.path.basename(args.source)
         out_name = f"{source_name}-{args.model_name}"
         print(f"writing {out_name}.npz")
         np.savez_compressed(f"{out_name}", *chunks)
