@@ -8,16 +8,17 @@ import tensorflow as tf
 
 import model, sample, encoder
 
+
 def sample_model(
-    model_name='117M',
-    run_name='run1',
+    model_name="117M",
+    run_name="run1",
     seed=None,
     nsamples=1,
     batch_size=1,
     length=None,
     temperature=1,
     top_k=0,
-    top_p=0.0
+    top_p=0.0,
 ):
     """
     Run the sample_model
@@ -40,29 +41,38 @@ def sample_model(
     :top_p=0.0 : Float value controlling diversity. Implements nucleus sampling,
      overriding top_k if set to a value > 0. A good setting is 0.9.
     """
-    enc = encoder.get_encoder(model_name, 'models')
+    enc = encoder.get_encoder(model_name, "models")
     hparams = model.default_hparams()
-    with open(os.path.join('models', model_name, 'hparams.json')) as f:
+    with open(os.path.join("models", model_name, "hparams.json")) as f:
         hparams.override_from_dict(json.load(f))
 
     if length is None:
         length = hparams.n_ctx
     elif length > hparams.n_ctx:
-        raise ValueError("Can't get samples longer than window size: %s" % hparams.n_ctx)
+        raise ValueError(
+            "Can't get samples longer than window size: %s" % hparams.n_ctx
+        )
 
     with tf.Session(graph=tf.Graph()) as sess:
         np.random.seed(seed)
         tf.set_random_seed(seed)
 
         output = sample.sample_sequence(
-            hparams=hparams, length=length,
-            start_token=enc.encoder['<|endoftext|>'],
+            hparams=hparams,
+            length=length,
+            start_token=enc.encoder["<|endoftext|>"],
             batch_size=batch_size,
-            temperature=temperature, top_k=top_k, top_p=top_p
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
         )[:, 1:]
 
         saver = tf.train.Saver()
-        ckpt = tf.train.latest_checkpoint(os.path.join('checkpoint', run_name))
+        # if there's a checkpoint, load it
+        if os.path.isdir("checkpoint") and run_name in os.listdir("checkpoint"):
+            ckpt = tf.train.latest_checkpoint(os.path.join("checkpoint", run_name))
+        else:
+            ckpt = tf.train.latest_checkpoint(os.path.join("models", model_name))
         saver.restore(sess, ckpt)
 
         generated = 0
@@ -74,5 +84,6 @@ def sample_model(
                 print("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40)
                 print(text)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     fire.Fire(sample_model)
