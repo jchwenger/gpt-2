@@ -1,8 +1,10 @@
-__pycache__
 .mypy_cache/
-models/
+__pycache__
 checkpoint
 samples
+models/
+
+gpt2-vars.txt
 
 # npz files
 *.npz
