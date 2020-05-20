@@ -25,7 +25,6 @@ parser = argparse.ArgumentParser(
     description="Fine-tune GPT-2 on your custom dataset.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
-
 parser.add_argument(
     "--dataset",
     metavar="PATH",
@@ -33,6 +32,7 @@ parser.add_argument(
     required=True,
     help="Input file, directory, or glob pattern (utf-8 text, or preencoded .npz files).",
 )
+
 parser.add_argument(
     "--model_name",
     metavar="MODEL",
@@ -40,6 +40,7 @@ parser.add_argument(
     default="117M",
     help="Pretrained model name",
 )
+
 parser.add_argument(
     "--combine",
     metavar="CHARS",
@@ -47,6 +48,7 @@ parser.add_argument(
     default=50000,
     help="Concatenate input files with <|endoftext|> separator into chunks of this minimum size",
 )
+
 parser.add_argument(
     "--encoding",
     type=str,
@@ -57,6 +59,7 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size", metavar="SIZE", type=int, default=1, help="Batch size"
 )
+
 parser.add_argument(
     "--learning_rate",
     metavar="LR",
@@ -64,6 +67,7 @@ parser.add_argument(
     default=0.00002,
     help="Learning rate for Adam",
 )
+
 parser.add_argument(
     "--accumulate_gradients",
     metavar="N",
@@ -71,24 +75,25 @@ parser.add_argument(
     default=1,
     help="Accumulate gradients across N minibatches.",
 )
+
 parser.add_argument(
     "--memory_saving_gradients",
     default=False,
     action="store_true",
     help="Use gradient checkpointing to reduce vram usage.",
 )
+
 parser.add_argument(
     "--only_train_transformer_layers",
     default=False,
     action="store_true",
     help="Restrict training to the transformer blocks.",
 )
+
 parser.add_argument(
-    "--optimizer",
-    type=str,
-    default="adam",
-    help="Optimizer. <adam|sgd>."
+    "--optimizer", type=str, default="adam", help="Optimizer. <adam|sgd>."
 )
+
 parser.add_argument(
     "--noise",
     type=float,
@@ -96,12 +101,8 @@ parser.add_argument(
     help="Add noise to input training data to regularize against typos.",
 )
 
-parser.add_argument(
-    "--top_k",
-    type=int,
-    default=40,
-    help="K for top-k sampling."
-)
+parser.add_argument("--top_k", type=int, default=40, help="K for top-k sampling.")
+
 parser.add_argument(
     "--top_p",
     type=float,
@@ -121,6 +122,7 @@ parser.add_argument(
     default="run1",
     help="Run id. Name of subdirectory in checkpoint/ and samples/",
 )
+
 parser.add_argument(
     "--sample_every",
     metavar="N",
@@ -128,6 +130,7 @@ parser.add_argument(
     default=100,
     help="Generate samples every N steps",
 )
+
 parser.add_argument(
     "--sample_length",
     metavar="TOKENS",
@@ -135,13 +138,11 @@ parser.add_argument(
     default=1023,
     help="Sample this many tokens",
 )
+
 parser.add_argument(
-    "--sample_num",
-    metavar="N",
-    type=int,
-    default=1,
-    help="Generate this many samples"
+    "--sample_num", metavar="N", type=int, default=1, help="Generate this many samples"
 )
+
 parser.add_argument(
     "--save_every",
     metavar="N",
@@ -157,6 +158,7 @@ parser.add_argument(
     default=None,
     help="Dataset for validation loss, defaults to --dataset.",
 )
+
 parser.add_argument(
     "--val_batch_size",
     metavar="SIZE",
@@ -164,6 +166,7 @@ parser.add_argument(
     default=2,
     help="Batch size for validation.",
 )
+
 parser.add_argument(
     "--val_batch_count",
     metavar="N",
@@ -171,6 +174,7 @@ parser.add_argument(
     default=40,
     help="Number of batches for validation.",
 )
+
 parser.add_argument(
     "--val_every",
     metavar="STEPS",
@@ -188,11 +192,8 @@ parser.add_argument(
     help="Type of encoder. Choices: default, sentencepiece. Default: default",
 )
 
-
 parser.add_argument(
-    "--reverse",
-    action="store_true",
-    help="Train on reversed token sequences",
+    "--reverse", action="store_true", help="Train on reversed token sequences",
 )
 
 
@@ -216,9 +217,9 @@ def randomize(context, hparams, p):
 
 def main():
     args = parser.parse_args()
-    if args.encoder == 'default':
+    if args.encoder == "default":
         enc = encoder.get_encoder(args.model_name, "models")
-    elif args.encoder == 'sentencepiece':
+    elif args.encoder == "sentencepiece":
         enc = encoder_sp.get_encoder(args.model_name, "models")
     hparams = model.default_hparams()
     with open(os.path.join("models", args.model_name, "hparams.json")) as f:
@@ -250,7 +251,9 @@ def main():
         )
 
         if args.val_every > 0:
-            val_context = tf.compat.v1.placeholder(tf.int32, [args.val_batch_size, None])
+            val_context = tf.compat.v1.placeholder(
+                tf.int32, [args.val_batch_size, None]
+            )
             val_output = model.model(hparams=hparams, X=val_context)
             val_loss = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -305,7 +308,9 @@ def main():
         summary_lr = tf.compat.v1.summary.scalar("learning_rate", args.learning_rate)
         summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
 
-        summary_log = tf.compat.v1.summary.FileWriter(os.path.join(CHECKPOINT_DIR, args.run_name))
+        summary_log = tf.compat.v1.summary.FileWriter(
+            os.path.join(CHECKPOINT_DIR, args.run_name)
+        )
 
         saver = tf.compat.v1.train.Saver(
             var_list=all_vars, max_to_keep=1, keep_checkpoint_every_n_hours=8
