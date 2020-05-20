@@ -332,6 +332,7 @@ def main():
         print("Loading dataset...")
         chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
         if args.reverse:
+            print("Reversing dataset...")
             chunks = [c[::-1] for c in chunks]
         data_sampler = Sampler(chunks)
         if args.val_every > 0:
@@ -339,7 +340,9 @@ def main():
                 val_chunks = load_dataset(
                     enc, args.val_dataset, args.combine, encoding=args.encoding
                 )
-                val_chunks = [c[::-1] for c in val_chunks]
+                if args.reverse:
+                    print("Reversing val dataset...")
+                    val_chunks = [c[::-1] for c in val_chunks]
             else:
                 val_chunks = chunks
         print("dataset has", data_sampler.total_size, "tokens")
@@ -386,10 +389,17 @@ def main():
                     tf_sample, feed_dict={context: args.batch_size * [context_tokens]}
                 )
                 for i in range(min(args.sample_num - index, args.batch_size)):
-                    text = enc.decode(out[i])
+                    if args.reverse:
+                        textr = enc.decode(out[i])
+                        text = enc.decode(out[i][::-1])
+                    else:
+                        text = enc.decode(out[i])
                     text = "======== SAMPLE {} ========\n{}\n".format(index + 1, text)
                     all_text.append(text)
                     index += 1
+            if args.reverse:
+                print("==== ORIGINAL REVERSED ====")
+                print(textr)
             print(text)
             maketree(os.path.join(SAMPLE_DIR, args.run_name))
             with open(
