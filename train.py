@@ -461,6 +461,10 @@ def main():
 
                 avg_loss = (avg_loss[0] * 0.99 + v_loss, avg_loss[1] * 0.99 + 1.0)
 
+                smpl = data_sampler.sample(20)
+                if args.reverse:
+                    smpl = smpl[::-1]
+                trunc = enc.decode(smpl).replace("\n", " ")
                 print(
                     "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} | {trunc}"
                     .format(
@@ -468,7 +472,7 @@ def main():
                         time=time.time() - start_time,
                         loss=v_loss,
                         avg=avg_loss[0] / avg_loss[1],
-                        trunc=enc.decode(data_sampler.sample(20)).replace("\n", " ")
+                        trunc=trunc
                     )
                 )
 
