@@ -387,6 +387,7 @@ def main():
         def generate_samples():
             print("Generating samples...")
             context_tokens = data_sampler.sample(1)
+            print("Sampled token used as seed:", enc.decode(context_tokens))
             all_text = []
             index = 0
             while index < args.sample_num:
