@@ -196,6 +196,12 @@ parser.add_argument(
     "--reverse", action="store_true", help="Train on reversed token sequences",
 )
 
+parser.add_argument(
+    "--print_train_sample",
+    action="store_true",
+    help="""Print the start of the training sample at each step.""",
+)
+
 
 def maketree(path):
     try:
@@ -451,30 +457,36 @@ def main():
                 if args.accumulate_gradients > 1:
                     sess.run(opt_reset)
                     for _ in range(args.accumulate_gradients):
-                        sess.run(opt_compute, feed_dict={context: sample_batch()})
+                        smpl_batch = sample_batch()
+                        sess.run(opt_compute, feed_dict={context: smpl_batch})
                     (v_loss, v_summary) = sess.run((opt_apply, summaries))
                 else:
+                    smpl_batch = sample_batch()
                     (_, v_loss, v_summary) = sess.run(
                         (opt_apply, loss, summaries),
-                        feed_dict={context: sample_batch()},
+                        feed_dict={context: smpl_batch },
                     )
 
                 summary_log.add_summary(v_summary, counter)
 
                 avg_loss = (avg_loss[0] * 0.99 + v_loss, avg_loss[1] * 0.99 + 1.0)
 
-                smpl = data_sampler.sample(20)[::-1] if args.reverse else data_sampler.sample(20)
-                trunc = enc.decode(smpl).replace("\n", " ")
-                print(
-                    "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} | {trunc}"
-                    .format(
-                        counter=counter,
-                        time=time.time() - start_time,
-                        loss=v_loss,
-                        avg=avg_loss[0] / avg_loss[1],
-                        trunc=trunc
-                    )
+                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f}".format(
+                    counter=counter,
+                    time=time.time() - start_time,
+                    loss=v_loss,
+                    avg=avg_loss[0] / avg_loss[1],
                 )
+                if args.print_train_sample:
+                    msg += " | Training on: "
+                    # get tty width, https://stackoverflow.com/a/943921
+                    columns = int(os.popen('stty size', 'r').read().split()[1])
+                    if args.reverse:
+                        smpl = enc.decode(smpl_batch[0][::-1])
+                    else:
+                        smpl = enc.decode(smpl_batch[0])
+                    msg += smpl.replace("\n", " ")[: columns - len(msg) - 5] + "..."
+                print(msg)
 
                 counter += 1
         except KeyboardInterrupt:
