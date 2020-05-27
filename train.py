@@ -331,6 +331,7 @@ def main():
         else:
             ckpt = tf.train.latest_checkpoint(args.restore_from)
         if ckpt is not None:
+            print("-" * 40)
             print("Loading checkpoint", ckpt)
             saver.restore(sess, ckpt)
 
