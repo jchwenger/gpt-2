@@ -127,7 +127,7 @@ parser.add_argument(
     "--sample_every",
     metavar="N",
     type=int,
-    default=100,
+    default=1000,
     help="Generate samples every N steps",
 )
 
@@ -147,7 +147,7 @@ parser.add_argument(
     "--save_every",
     metavar="N",
     type=int,
-    default=1000,
+    default=10000,
     help="Write a checkpoint every N steps",
 )
 
