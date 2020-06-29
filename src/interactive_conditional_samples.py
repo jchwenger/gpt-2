@@ -73,9 +73,13 @@ def interact_model(
         saver = tf.train.Saver()
         # if there's a checkpoint, load it
         if os.path.isdir("checkpoint") and run_name in os.listdir("checkpoint"):
-            ckpt = tf.train.latest_checkpoint(os.path.join("checkpoint", run_name))
+            ckpt_path = os.path.join("checkpoint", run_name)
+            print('loading checkpoint:', ckpt_path)
+            ckpt = tf.train.latest_checkpoint(ckpt_path)
         else:
-            ckpt = tf.train.latest_checkpoint(os.path.join("models", model_name))
+            ckpt_path = os.path.join("models", model_name)
+            print('loading checkpoint:', ckpt_path)
+            ckpt = tf.train.latest_checkpoint(ckpt_path)
         saver.restore(sess, ckpt)
 
         while True:
