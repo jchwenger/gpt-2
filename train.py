@@ -6,6 +6,7 @@ import os
 import json
 import time
 import tqdm
+import regex
 import argparse
 import numpy as np
 import tensorflow as tf
@@ -444,6 +445,16 @@ def main():
         def sample_batch():
             return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
 
+        def delete_previous_checkpoints():
+            for fname in os.listdir(f"checkpoint/{args.run_name}"):
+                if regex.match(r"model-*", fname) and not regex.match(
+                    r"model-" + str(counter) + r"*", fname
+                ):
+                    print(f"(deleting former checkpoint: {fname})")
+                    os.remove(
+                        os.path.join("checkpoint", args.run_name, fname)
+                    )
+
         avg_loss = (0.0, 0.0)
         start_time = time.time()
 
@@ -452,6 +463,7 @@ def main():
                 if counter % args.save_every == 0:
                     try:
                         save()
+                        delete_previous_checkpoints()
                     except:
                         print(
                             "\u001b[31mUNABLE TO SAVE, PLEASE FREE UP SOME MEMORY\u001b[0m"
@@ -500,6 +512,7 @@ def main():
         except KeyboardInterrupt:
             print("interrupted")
             save()
+            delete_previous_checkpoints()
 
 
 if __name__ == "__main__":
