@@ -446,7 +446,10 @@ def main():
         try:
             while True:
                 if counter % args.save_every == 0:
-                    save()
+                    try:
+                        save()
+                    except:
+                        print("\u001b[31mUNABLE TO SAVE, PLEASE FREE UP SOME MEMORY\u001b[0m")
                 if counter % args.sample_every == 0:
                     generate_samples()
                 if args.val_every > 0 and (
