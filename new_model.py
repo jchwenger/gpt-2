@@ -61,8 +61,8 @@ parser.add_argument(
     "--combine",
     type=int,
     default=50000,
-    help="Concatenate files with <|endoftext|> separator into chunks of this minimum size",
-)
+    help="""Concatenate files with <|endoftext|> separator into chunks of this
+    minimum size. Defaults to: 50000.""",)
 
 parser.add_argument("--encoding", type=str, default="utf-8", help="Default: utf-8.")
 
