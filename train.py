@@ -438,7 +438,7 @@ def main():
             )
 
         def sample_batch():
-            return [data_sampler.sample(1024) for _ in range(args.batch_size)]
+            return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
 
         avg_loss = (0.0, 0.0)
         start_time = time.time()
