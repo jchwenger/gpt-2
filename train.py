@@ -320,9 +320,8 @@ def main():
             os.path.join(CHECKPOINT_DIR, args.run_name)
         )
 
-        saver = tf.compat.v1.train.Saver(
-            var_list=all_vars, max_to_keep=1, keep_checkpoint_every_n_hours=8
-        )
+        saver = tf.compat.v1.train.Saver(var_list=all_vars, max_to_keep=1)
+
         sess.run(tf.compat.v1.global_variables_initializer())
 
         if args.restore_from == "latest":
@@ -451,9 +450,7 @@ def main():
                     r"model-" + str(counter) + r"*", fname
                 ):
                     print(f"(deleting former checkpoint: {fname})")
-                    os.remove(
-                        os.path.join("checkpoint", args.run_name, fname)
-                    )
+                    os.remove(os.path.join("checkpoint", args.run_name, fname))
 
         avg_loss = (0.0, 0.0)
         start_time = time.time()
