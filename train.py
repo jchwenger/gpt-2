@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser(
     description="Fine-tune GPT-2 on your custom dataset.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
+
 parser.add_argument(
     "--dataset",
     metavar="PATH",
@@ -365,7 +366,10 @@ def main():
             # it deterministic during training as well as across runs.
             val_data_sampler = Sampler(val_chunks, seed=1)
             val_batches = [
-                [val_data_sampler.sample(1024) for _ in range(args.val_batch_size)]
+                [
+                    val_data_sampler.sample(hparams.n_ctx)
+                    for _ in range(args.val_batch_size)
+                ]
                 for _ in range(args.val_batch_count)
             ]
 
@@ -449,7 +453,9 @@ def main():
                     try:
                         save()
                     except:
-                        print("\u001b[31mUNABLE TO SAVE, PLEASE FREE UP SOME MEMORY\u001b[0m")
+                        print(
+                            "\u001b[31mUNABLE TO SAVE, PLEASE FREE UP SOME MEMORY\u001b[0m"
+                        )
                 if counter % args.sample_every == 0:
                     generate_samples()
                 if args.val_every > 0 and (
@@ -466,8 +472,7 @@ def main():
                 else:
                     smpl_batch = sample_batch()
                     (_, v_loss, v_summary) = sess.run(
-                        (opt_apply, loss, summaries),
-                        feed_dict={context: smpl_batch },
+                        (opt_apply, loss, summaries), feed_dict={context: smpl_batch},
                     )
 
                 summary_log.add_summary(v_summary, counter)
@@ -483,7 +488,7 @@ def main():
                 if args.print_train_sample:
                     msg += " | Training on: "
                     # get tty width, https://stackoverflow.com/a/943921
-                    columns = int(os.popen('stty size', 'r').read().split()[1])
+                    columns = int(os.popen("stty size", "r").read().split()[1])
                     if args.reverse:
                         smpl = enc.decode(smpl_batch[0][::-1])
                     else:
