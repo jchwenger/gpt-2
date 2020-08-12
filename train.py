@@ -17,6 +17,9 @@ import encoder_sp as encoder_sp
 import memory_saving_gradients
 from accumulate import AccumulatingOptimizer
 from load_dataset import load_dataset, Sampler
+from adafactor_optimizer import AdafactorOptimizer
+from adafactor_optimizer import adafactor_decay_rate_adam
+from adafactor_optimizer import adafactor_decay_rate_pow
 
 CHECKPOINT_DIR = "checkpoint"
 SAMPLE_DIR = "samples"
@@ -66,7 +69,7 @@ parser.add_argument(
     "--learning_rate",
     metavar="LR",
     type=float,
-    default=0.00002,
+    default=0.1,
     help="Learning rate for Adam",
 )
 
@@ -93,7 +96,25 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--optimizer", type=str, default="adam", help="Optimizer. <adam|sgd>."
+    "--optimizer", type=str, default="adam", help="Optimizer. <adam|adafactor|sgd>."
+)
+
+parser.add_argument(
+    "--decay_type", type=str, default="pow",
+    help="""Decay type for optimizer, used with AdaFactor.
+    Defaults to pow. <adam|pow>."""
+)
+
+parser.add_argument(
+    "--decay_steps",
+    type=int,
+    default=10000,
+    help="""Number of steps after which the exponential decay of the learning
+    rate is applied.""",
+)
+
+parser.add_argument(
+    "--no_weight_decay", action="store_true", help="Disable weight decay (for Adafactor)",
 )
 
 parser.add_argument(
@@ -287,10 +308,48 @@ def main():
             else all_vars
         )
 
+        counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
+        if os.path.exists(counter_path):
+            # Load the step number if we're resuming a run
+            # Add 1 so we don't immediately try to save again
+            with open(counter_path, "r") as i:
+                global_step = tf.Variable(int(i.read()), trainable=False, name="global_step")
+        else:
+            global_step = tf.compat.v1.train.get_or_create_global_step()
+
+        sess.run(global_step.initializer)
+
+        learning_rate = tf.compat.v1.train.exponential_decay(
+            args.learning_rate, global_step, args.decay_steps, 0.96, staircase=True
+        )
+
         if args.optimizer == "adam":
-            opt = tf.compat.v1.train.AdamOptimizer(learning_rate=args.learning_rate)
+            opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
         elif args.optimizer == "sgd":
-            opt = tf.train.GradientDescentOptimizer(learning_rate=args.learning_rate)
+            opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+        elif args.optimizer == "adafactor":
+
+            if args.decay_type == "adam":
+                decay_rate = adafactor_decay_rate_adam(0.98)
+            elif args.decay_type == "pow":
+                decay_rate = adafactor_decay_rate_pow(0.8)
+            else:
+                raise ValueError("unknown optimizer_adafactor_decay_type")
+
+            if args.no_weight_decay:
+                opt = AdafactorOptimizer(
+                    learning_rate=learning_rate,
+                    decay_rate=decay_rate,
+                    beta1=0.0,
+                    name="Adafactor")
+            else:
+                AdafactorWOptimizer = tf.contrib.opt.extend_with_decoupled_weight_decay(AdafactorOptimizer)
+                opt = AdafactorWOptimizer(
+                    weight_decay=0.01 * learning_rate,
+                    learning_rate=learning_rate,
+                    decay_rate=decay_rate,
+                    beta1=0.0,
+                    name="AdafactorW")
         else:
             exit("Bad optimizer:", args.optimizer)
 
@@ -302,7 +361,7 @@ def main():
             opt = AccumulatingOptimizer(opt=opt, var_list=train_vars)
             opt_reset = opt.reset()
             opt_compute = opt.compute_gradients(loss)
-            opt_apply = opt.apply_gradients()
+            opt_apply = opt.apply_gradients(global_step=global_step)
             summary_loss = tf.compat.v1.summary.scalar("loss", opt_apply)
         else:
             if args.memory_saving_gradients:
@@ -310,10 +369,10 @@ def main():
             else:
                 opt_grads = tf.gradients(loss, train_vars)
             opt_grads = list(zip(opt_grads, train_vars))
-            opt_apply = opt.apply_gradients(opt_grads)
+            opt_apply = opt.apply_gradients(opt_grads, global_step=global_step)
             summary_loss = tf.compat.v1.summary.scalar("loss", loss)
 
-        summary_lr = tf.compat.v1.summary.scalar("learning_rate", args.learning_rate)
+        summary_lr = tf.compat.v1.summary.scalar("learning_rate", learning_rate)
         summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
 
         summary_log = tf.compat.v1.summary.FileWriter(
@@ -359,7 +418,7 @@ def main():
             else:
                 val_chunks = chunks
         print("dataset has", data_sampler.total_size, "tokens")
-        print("Training...")
+        print(f"Training... (global step: {sess.run(tf.compat.v1.train.get_global_step())})")
 
         if args.val_every > 0:
             # Sample from validation set once with fixed seed to make
@@ -373,27 +432,21 @@ def main():
                 for _ in range(args.val_batch_count)
             ]
 
-        counter = 1
-        counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
-        if os.path.exists(counter_path):
-            # Load the step number if we're resuming a run
-            # Add 1 so we don't immediately try to save again
-            with open(counter_path, "r") as fp:
-                counter = int(fp.read()) + 1
-
         def save():
             maketree(os.path.join(CHECKPOINT_DIR, args.run_name))
+            gs = sess.run(tf.compat.v1.train.get_global_step())
             print(
                 "Saving",
-                os.path.join(CHECKPOINT_DIR, args.run_name, "model-{}").format(counter),
+                os.path.join(CHECKPOINT_DIR, args.run_name, "model-{}")
+                    .format(gs),
             )
             saver.save(
                 sess,
                 os.path.join(CHECKPOINT_DIR, args.run_name, "model"),
-                global_step=counter,
+                global_step=gs,
             )
-            with open(counter_path, "w") as fp:
-                fp.write(str(counter) + "\n")
+            with open(counter_path, "w") as o:
+                o.write(str(gs) + "\n")
 
         def generate_samples():
             print("Generating samples...")
@@ -419,12 +472,14 @@ def main():
                 print(textr)
             print(text)
             maketree(os.path.join(SAMPLE_DIR, args.run_name))
+            gs = sess.run(tf.compat.v1.train.get_global_step())
             with open(
-                os.path.join(SAMPLE_DIR, args.run_name, "samples-{}").format(counter),
+                os.path.join(SAMPLE_DIR, args.run_name, "samples-{}")
+                    .format(gs),
                 "w",
                 encoding=args.encoding,
-            ) as fp:
-                fp.write("\n".join(all_text))
+            ) as o:
+                o.write("\n".join(all_text))
 
         def validation():
             print("Calculating validation loss...")
@@ -433,11 +488,12 @@ def main():
                 losses.append(sess.run(val_loss, feed_dict={val_context: batch}))
             v_val_loss = np.mean(losses)
             v_summary = sess.run(val_loss_summary, feed_dict={val_loss: v_val_loss})
-            summary_log.add_summary(v_summary, counter)
+            gs = sess.run(tf.compat.v1.train.get_global_step())
+            summary_log.add_summary(v_summary, gs)
             summary_log.flush()
             print(
                 "[{counter} | {time:2.2f}] validation loss = {loss:2.2f}".format(
-                    counter=counter, time=time.time() - start_time, loss=v_val_loss
+                    counter=gs, time=time.time() - start_time, loss=v_val_loss
                 )
             )
 
@@ -445,9 +501,10 @@ def main():
             return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
 
         def delete_previous_checkpoints():
+            gs = sess.run(tf.compat.v1.train.get_global_step())
             for fname in os.listdir(f"checkpoint/{args.run_name}"):
                 if regex.match(r"model-*", fname) and not regex.match(
-                    r"model-" + str(counter) + r"*", fname
+                    r"model-" + str(gs) + r"*", fname
                 ):
                     print(f"(deleting former checkpoint: {fname})")
                     os.remove(os.path.join("checkpoint", args.run_name, fname))
@@ -457,7 +514,10 @@ def main():
 
         try:
             while True:
-                if counter % args.save_every == 0:
+
+                gs = sess.run(tf.compat.v1.train.get_global_step())
+
+                if gs % args.save_every == 0:
                     try:
                         save()
                         delete_previous_checkpoints()
@@ -465,10 +525,10 @@ def main():
                         print(
                             "\u001b[31mUNABLE TO SAVE, PLEASE FREE UP SOME MEMORY\u001b[0m"
                         )
-                if counter % args.sample_every == 0:
+                if gs % args.sample_every == 0:
                     generate_samples()
                 if args.val_every > 0 and (
-                    counter % args.val_every == 0 or counter == 1
+                    gs % args.val_every == 0 or gs == 1
                 ):
                     validation()
 
@@ -484,16 +544,20 @@ def main():
                         (opt_apply, loss, summaries), feed_dict={context: smpl_batch},
                     )
 
-                summary_log.add_summary(v_summary, counter)
+                gs = sess.run(tf.compat.v1.train.get_global_step())
+
+                summary_log.add_summary(v_summary, gs)
 
                 avg_loss = (avg_loss[0] * 0.9999 + v_loss, avg_loss[1] * 0.9999 + 1.0)
 
-                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f}".format(
-                    counter=counter,
+                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} | lr={lr:.4f}".format(
+                    counter=gs,
                     time=time.time() - start_time,
                     loss=v_loss,
                     avg=avg_loss[0] / avg_loss[1],
+                    lr=sess.run(learning_rate),
                 )
+
                 if args.print_train_sample:
                     msg += " | Training on: "
                     # get tty width, https://stackoverflow.com/a/943921
@@ -505,7 +569,6 @@ def main():
                     msg += smpl.replace("\n", " ")[: columns - len(msg) - 5] + "..."
                 print(msg)
 
-                counter += 1
         except KeyboardInterrupt:
             print("interrupted")
             save()
