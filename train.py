@@ -106,7 +106,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--decay_steps",
+    "--decay_every",
     type=int,
     default=10000,
     help="""Number of steps after which the exponential decay of the learning
@@ -320,11 +320,20 @@ def main():
         sess.run(global_step.initializer)
 
         learning_rate = tf.compat.v1.train.exponential_decay(
-            args.learning_rate, global_step, args.decay_steps, 0.96, staircase=True
+            args.learning_rate, global_step, args.decay_every, 0.96, staircase=True
         )
 
         if args.optimizer == "adam":
-            opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
+            if args.no_weight_decay:
+                opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
+            else:
+                opt = tf.contrib.opt.AdamWOptimizer(
+                    learning_rate=learning_rate,
+                    weight_decay=0.01 * learning_rate,
+                    beta1=0.9,
+                    beta2=0.98,
+                    epsilon=1e-9)
+
         elif args.optimizer == "sgd":
             opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         elif args.optimizer == "adafactor":
@@ -515,7 +524,7 @@ def main():
         try:
             while True:
 
-                gs = sess.run(tf.compat.v1.train.get_global_step())
+                gs = sess.run(tf.compat.v1.train.get_global_step()) + 1
 
                 if gs % args.save_every == 0:
                     try:
@@ -523,7 +532,7 @@ def main():
                         delete_previous_checkpoints()
                     except:
                         print(
-                            "\u001b[31mUNABLE TO SAVE, PLEASE FREE UP SOME MEMORY\u001b[0m"
+                            "\u001b[31mUNABLE TO SAVE, FREE UP SOME MEMORY?\u001b[0m"
                         )
                 if gs % args.sample_every == 0:
                     generate_samples()
@@ -544,13 +553,11 @@ def main():
                         (opt_apply, loss, summaries), feed_dict={context: smpl_batch},
                     )
 
-                gs = sess.run(tf.compat.v1.train.get_global_step())
-
                 summary_log.add_summary(v_summary, gs)
 
                 avg_loss = (avg_loss[0] * 0.9999 + v_loss, avg_loss[1] * 0.9999 + 1.0)
 
-                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} | lr={lr:.4f}".format(
+                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} lr={lr:.4f}".format(
                     counter=gs,
                     time=time.time() - start_time,
                     loss=v_loss,

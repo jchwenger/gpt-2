@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 
 # Adafactor from tensor2tensor -------------------------------------------------------------
+# imported & adapted from JL Connor
+# https://github.com/ConnorJL/GPT2
 
 class AdafactorOptimizer(tf.train.Optimizer):
     """Optimizer that implements the Adafactor algorithm.
