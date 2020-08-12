@@ -114,8 +114,8 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--no_weight_decay", action="store_true", help="Disable weight decay (for Adafactor)",
-)
+    "--weight_decay", action="store_true", help="Enable weight decay (for
+    Adafactor, Adam)",)
 
 parser.add_argument(
     "--noise",
@@ -324,18 +324,21 @@ def main():
         )
 
         if args.optimizer == "adam":
-            if args.no_weight_decay:
-                opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
-            else:
+
+            if args.weight_decay:
                 opt = tf.contrib.opt.AdamWOptimizer(
                     learning_rate=learning_rate,
                     weight_decay=0.01 * learning_rate,
                     beta1=0.9,
                     beta2=0.98,
                     epsilon=1e-9)
+            else:
+                opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
 
         elif args.optimizer == "sgd":
+
             opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+
         elif args.optimizer == "adafactor":
 
             if args.decay_type == "adam":
@@ -345,13 +348,7 @@ def main():
             else:
                 raise ValueError("unknown optimizer_adafactor_decay_type")
 
-            if args.no_weight_decay:
-                opt = AdafactorOptimizer(
-                    learning_rate=learning_rate,
-                    decay_rate=decay_rate,
-                    beta1=0.0,
-                    name="Adafactor")
-            else:
+            if args.weight_decay:
                 AdafactorWOptimizer = tf.contrib.opt.extend_with_decoupled_weight_decay(AdafactorOptimizer)
                 opt = AdafactorWOptimizer(
                     weight_decay=0.01 * learning_rate,
@@ -359,6 +356,12 @@ def main():
                     decay_rate=decay_rate,
                     beta1=0.0,
                     name="AdafactorW")
+            else:
+                opt = AdafactorOptimizer(
+                    learning_rate=learning_rate,
+                    decay_rate=decay_rate,
+                    beta1=0.0,
+                    name="Adafactor")
         else:
             exit("Bad optimizer:", args.optimizer)
 
