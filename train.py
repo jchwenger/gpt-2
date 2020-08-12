@@ -106,7 +106,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--decay_every",
+    "--decay_lr_every",
     type=int,
     default=10000,
     help="""Number of steps after which the exponential decay of the learning
@@ -320,7 +320,7 @@ def main():
         sess.run(global_step.initializer)
 
         learning_rate = tf.compat.v1.train.exponential_decay(
-            args.learning_rate, global_step, args.decay_every, 0.96, staircase=True
+            args.learning_rate, global_step, args.decay_lr_every, 0.96, staircase=True
         )
 
         if args.optimizer == "adam":
