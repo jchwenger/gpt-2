@@ -114,8 +114,8 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--weight_decay", action="store_true", help="Enable weight decay (for
-    Adafactor, Adam)",)
+    "--weight_decay", action="store_true", help="""Enable weight decay (for
+    Adafactor, Adam)""",)
 
 parser.add_argument(
     "--noise",
