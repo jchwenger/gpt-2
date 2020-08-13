@@ -560,7 +560,7 @@ def main():
 
                 avg_loss = (avg_loss[0] * 0.9999 + v_loss, avg_loss[1] * 0.9999 + 1.0)
 
-                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} lr={lr:.4f}".format(
+                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} lr={lr}".format(
                     counter=gs,
                     time=time.time() - start_time,
                     loss=v_loss,
