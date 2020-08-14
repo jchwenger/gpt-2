@@ -5,7 +5,7 @@ import tensorflow as tf
 # imported & adapted from JL Connor
 # https://github.com/ConnorJL/GPT2
 
-class AdafactorOptimizer(tf.train.Optimizer):
+class AdafactorOptimizer(tf.compat.v1.train.Optimizer):
     """Optimizer that implements the Adafactor algorithm.
     Adafactor is described in https://arxiv.org/abs/1804.04235.
     Adafactor is most similar to Adam (Kingma and Ba), the major differences are:
