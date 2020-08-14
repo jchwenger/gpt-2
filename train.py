@@ -100,9 +100,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--decay_type", type=str, default="pow",
+    "--decay_type",
+    type=str,
+    default="pow",
     help="""Decay type for optimizer, used with AdaFactor.
-    Defaults to pow. <adam|pow>."""
+    Defaults to pow. <adam|pow>.""",
 )
 
 parser.add_argument(
@@ -114,8 +116,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--weight_decay", action="store_true", help="""Enable weight decay (for
-    Adafactor, Adam)""",)
+    "--weight_decay",
+    action="store_true",
+    help="""Enable weight decay (for Adafactor, Adam)""",
+)
 
 parser.add_argument(
     "--noise",
@@ -124,7 +128,7 @@ parser.add_argument(
     help="Add noise to input training data to regularize against typos.",
 )
 
-parser.add_argument("--top_k", type=int, default=40, help="K for top-k sampling.")
+parser.add_argument("--top_k", type=int, default=0, help="K for top-k sampling.")
 
 parser.add_argument(
     "--top_p",
@@ -245,11 +249,14 @@ def randomize(context, hparams, p):
 
 
 def main():
+
     args = parser.parse_args()
+
     if args.encoder == "default":
         enc = encoder.get_encoder(args.model_name, "models")
     elif args.encoder == "sentencepiece":
         enc = encoder_sp.get_encoder(args.model_name, "models")
+
     hparams = model.default_hparams()
     with open(os.path.join("models", args.model_name, "hparams.json")) as f:
         hparams.override_from_dict(json.load(f))
@@ -259,19 +266,15 @@ def main():
             "Can't get samples longer than window size: %s" % hparams.n_ctx
         )
 
-    if args.model_name == "345M":
-        args.memory_saving_gradients = True
-        if args.optimizer == "adam":
-            args.only_train_transformer_layers = True
-
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     config.graph_options.rewrite_options.layout_optimizer = (
         rewriter_config_pb2.RewriterConfig.OFF
     )
+
     with tf.compat.v1.Session(config=config) as sess:
         context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
-        context_in = randomize(context, hparams, args.noise)
+        context_in = randomize(context, hparams, args.noise) if args.noise else context
         output = model.model(hparams=hparams, X=context_in)
         loss = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -313,7 +316,9 @@ def main():
             # Load the step number if we're resuming a run
             # Add 1 so we don't immediately try to save again
             with open(counter_path, "r") as i:
-                global_step = tf.Variable(int(i.read()), trainable=False, name="global_step")
+                global_step = tf.Variable(
+                    int(i.read()), trainable=False, name="global_step"
+                )
         else:
             global_step = tf.compat.v1.train.get_or_create_global_step()
 
@@ -331,7 +336,8 @@ def main():
                     weight_decay=0.01 * learning_rate,
                     beta1=0.9,
                     beta2=0.98,
-                    epsilon=1e-9)
+                    epsilon=1e-9,
+                )
             else:
                 opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
 
@@ -349,19 +355,23 @@ def main():
                 raise ValueError("unknown optimizer_adafactor_decay_type")
 
             if args.weight_decay:
-                AdafactorWOptimizer = tf.contrib.opt.extend_with_decoupled_weight_decay(AdafactorOptimizer)
+                AdafactorWOptimizer = tf.contrib.opt.extend_with_decoupled_weight_decay(
+                    AdafactorOptimizer
+                )
                 opt = AdafactorWOptimizer(
                     weight_decay=0.01 * learning_rate,
                     learning_rate=learning_rate,
                     decay_rate=decay_rate,
                     beta1=0.0,
-                    name="AdafactorW")
+                    name="AdafactorW",
+                )
             else:
                 opt = AdafactorOptimizer(
                     learning_rate=learning_rate,
                     decay_rate=decay_rate,
                     beta1=0.0,
-                    name="Adafactor")
+                    name="Adafactor",
+                )
         else:
             exit("Bad optimizer:", args.optimizer)
 
@@ -430,7 +440,9 @@ def main():
             else:
                 val_chunks = chunks
         print("dataset has", data_sampler.total_size, "tokens")
-        print(f"Training... (global step: {sess.run(tf.compat.v1.train.get_global_step())})")
+        print(
+            f"Training... (global step: {sess.run(tf.compat.v1.train.get_global_step())})"
+        )
 
         if args.val_every > 0:
             # Sample from validation set once with fixed seed to make
@@ -449,8 +461,7 @@ def main():
             gs = sess.run(tf.compat.v1.train.get_global_step())
             print(
                 "Saving",
-                os.path.join(CHECKPOINT_DIR, args.run_name, "model-{}")
-                    .format(gs),
+                os.path.join(CHECKPOINT_DIR, args.run_name, "model-{}").format(gs),
             )
             saver.save(
                 sess,
@@ -486,8 +497,7 @@ def main():
             maketree(os.path.join(SAMPLE_DIR, args.run_name))
             gs = sess.run(tf.compat.v1.train.get_global_step())
             with open(
-                os.path.join(SAMPLE_DIR, args.run_name, "samples-{}")
-                    .format(gs),
+                os.path.join(SAMPLE_DIR, args.run_name, "samples-{}").format(gs),
                 "w",
                 encoding=args.encoding,
             ) as o:
@@ -534,14 +544,10 @@ def main():
                         save()
                         delete_previous_checkpoints()
                     except:
-                        print(
-                            "\u001b[31mUNABLE TO SAVE, FREE UP SOME MEMORY?\u001b[0m"
-                        )
+                        print("\u001b[31mUNABLE TO SAVE, FREE UP SOME MEMORY?\u001b[0m")
                 if gs % args.sample_every == 0:
                     generate_samples()
-                if args.val_every > 0 and (
-                    gs % args.val_every == 0 or gs == 1
-                ):
+                if args.val_every > 0 and (gs % args.val_every == 0 or gs == 1):
                     validation()
 
                 if args.accumulate_gradients > 1:
