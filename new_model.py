@@ -151,6 +151,7 @@ def train(args):
     if not args.skip_encoding_npz:
         underprint(f"generating npz encoding")
         enc = encoder_hug.get_encoder(args.model_name, "models")
+        enc.tok.add_special_tokens(args.special_tokens)
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
         # a txt file, we take only its name
         if args.source.endswith('.txt'):
