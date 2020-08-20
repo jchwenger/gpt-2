@@ -47,17 +47,33 @@ def get_pairs(word):
 
 
 class Encoder:
-    def __init__(self, encoder, bpe_merges, errors='replace'):
+    def __init__(
+        self, encoder, bpe_merges, errors="replace", special_tokens=["<|endoftext|>"]
+    ):
         self.encoder = encoder
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.errors = errors # how to handle errors in decoding
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
         self.bpe_ranks = dict(zip(bpe_merges, range(len(bpe_merges))))
+        self.special_encoder = {}
+        self.special_decoder = {}
         self.cache = {}
 
+        p = (
+            r"'s|'t|'re|'ve|'m|'ll|'d"
+            + r"| ?\p{L}+| ?\p{N}+"
+            + r"| ?[^\s\p{L}\p{N}]+"
+            + r"|\s+(?!\S)|\s+"
+        )
+        if special_tokens:
+            for s in special_tokens:
+                assert s in self.encoder, f"Special token '{s}' not found in encoder!"
+                self.special_encoder[s] = self.encoder[s]
+                self.special_decoder[self.encoder[s]] = s
+                p = f"{re.escape(s)}|{p}"
         # Should haved added re.IGNORECASE so BPE merges can happen for capitalized versions of contractions
-        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+        self.pat = re.compile(p, re.IGNORECASE)
 
     def bpe(self, token):
         if token in self.cache:
@@ -104,12 +120,25 @@ class Encoder:
         bpe_tokens = []
         for token in re.findall(self.pat, text):
             token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
-            bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(' '))
+            if token in self.special_encoder:
+                bpe_tokens.append(self.encoder[token])
+            else:
+                bpe_tokens.extend(
+                    self.encoder[bpe_token] for bpe_token in self.bpe(token).split(" ")
+                )
         return bpe_tokens
 
     def decode(self, tokens):
-        text = "".join([self.decoder[token] for token in tokens])
-        text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
+        text = "".join(
+            [
+                self.decoder[token]
+                for token in tokens
+                if token not in self.special_decoder
+            ]
+        )
+        text = bytearray([self.byte_decoder[c] for c in text]).decode(
+            "utf-8", errors=self.errors
+        )
         return text
 
 
@@ -123,7 +152,9 @@ def get_encoder(model_name, model_dir="checkpoint", special_tokens=None):
     with open(bpe_path, "r", encoding="utf-8") as f:
         bpe_data = f.read()
     bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split("\n")[1:-1]]
-    return Encoder(
-        encoder=encoder,
-        bpe_merges=bpe_merges,
-    )
+    if special_tokens is not None:
+        return Encoder(
+            encoder=encoder, bpe_merges=bpe_merges, special_tokens=special_tokens,
+        )
+    else:
+        return Encoder(encoder=encoder, bpe_merges=bpe_merges,)
