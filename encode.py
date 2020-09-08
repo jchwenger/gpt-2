@@ -15,26 +15,7 @@ parser = argparse.ArgumentParser(
     description="Pre-encode text files into tokenized training set.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
-parser.add_argument(
-    "--model_name",
-    metavar="MODEL",
-    type=str,
-    default="117M",
-    help="Pretrained model name",
-)
-parser.add_argument(
-    "--combine",
-    metavar="CHARS",
-    type=int,
-    default=50000,
-    help="Concatenate files with <|endoftext|> separator into chunks of this minimum size",
-)
-parser.add_argument(
-    "--encoding",
-    type=str,
-    default="utf-8",
-    help="Set the encoding for reading and writing files.",
-)
+
 parser.add_argument(
     "in_text",
     metavar="PATH",
@@ -46,8 +27,39 @@ parser.add_argument(
     "out_npz",
     metavar="OUT",
     type=str,
-    help="Output file name. Model name will be added to the name. If SentencePiece, '-sp' will be added after the name. '.npz' will be automatically added."
+    help="Output file name."
 )
+
+parser.add_argument(
+    "--model_name",
+    metavar="MODEL",
+    type=str,
+    default="117M",
+    help="Pretrained model name",
+)
+
+parser.add_argument(
+    "--special_tokens",
+    type=str,
+    default="<|endoftext|>",
+    help="Special predefined tokens. Separate with comma.",
+)
+
+parser.add_argument(
+    "--combine",
+    metavar="CHARS",
+    type=int,
+    default=50000,
+    help="Concatenate files with <|endoftext|> separator into chunks of this minimum size",
+)
+
+parser.add_argument(
+    "--encoding",
+    type=str,
+    default="utf-8",
+    help="Set the encoding for reading and writing files.",
+)
+
 
 parser.add_argument(
     "--encoder",
@@ -59,13 +71,14 @@ parser.add_argument(
 )
 
 
+
 def main():
     args = parser.parse_args()
-    args.out_npz += f"-{args.model_name}"
+    if args.special_tokens:
+        args.special_tokens = args.special_tokens.split(",")
     if args.encoder == "default":
-        enc = encoder.get_encoder(args.model_name, "models")
+        enc = encoder.get_encoder(args.model_name, "models", args.special_tokens)
     elif args.encoder == "sentencepiece":
-        args.out_npz += f"-sp"
         try:
             enc = encoder_sp.get_encoder(args.model_name, "models")
         except Exception as e:
@@ -74,6 +87,8 @@ def main():
             exit("The SentencePiece model is not given by default by OpenAI. Try generate a new one using new_sp_model.py.")
     elif args.encoder == "huggingface":
         enc = encoder_hug.get_encoder(args.model_name, "models")
+        if args.special_tokens:
+            enc.tok.add_special_tokens(args.special_tokens)
 
     print("Reading files")
     chunks = load_dataset(enc, args.in_text, args.combine, encoding=args.encoding)
