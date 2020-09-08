@@ -1,8 +1,9 @@
-import glob
-import numpy as np
-import os
 import tensorflow as tf
+import numpy as np
 import tqdm
+import glob
+import sys
+import os
 
 
 def load_dataset(enc, path, combine, encoding=None):
@@ -29,8 +30,14 @@ def load_dataset(enc, path, combine, encoding=None):
                     token_chunks.append(npz[item])
         else:
             # Plain text
-            with open(path, 'r', encoding=encoding) as fp:
-                raw_text += fp.read()
+            try:
+                with open(path, 'r', encoding=encoding) as fp:
+                    raw_text += fp.read()
+            except UnicodeDecodeError as e:
+                print(e)
+                print(f"file: {path}")
+                sys.exit()
+
             if len(raw_text) >= combine:
                 tokens = np.stack(enc.encode(raw_text))
                 token_chunks.append(tokens)
