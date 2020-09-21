@@ -346,7 +346,7 @@ def main():
 
         elif args.optimizer == "sgd":
 
-            opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+            opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=learning_rate)
 
         elif args.optimizer == "adafactor":
 
