@@ -24,6 +24,8 @@ from adafactor_optimizer import adafactor_decay_rate_pow
 CHECKPOINT_DIR = "checkpoint"
 SAMPLE_DIR = "samples"
 
+# https://stackoverflow.com/a/54927279
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 parser = argparse.ArgumentParser(
     description="Fine-tune GPT-2 on your custom dataset.",
