@@ -273,192 +273,189 @@ def main():
         rewriter_config_pb2.RewriterConfig.OFF
     )
 
-    with tf.compat.v1.Session(config=config) as sess:
-        context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
-        context_in = randomize(context, hparams, args.noise) if args.noise else context
-        output = model.model(hparams=hparams, X=context_in)
-        loss = tf.reduce_mean(
+    context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
+    context_in = randomize(context, hparams, args.noise) if args.noise else context
+    output = model.model(hparams=hparams, X=context_in)
+    loss = tf.reduce_mean(
+        tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=context[:, 1:], logits=output["logits"][:, :-1]
+        )
+    )
+
+    if args.val_every > 0:
+        val_context = tf.compat.v1.placeholder(
+            tf.int32, [args.val_batch_size, None]
+        )
+        val_output = model.model(hparams=hparams, X=val_context)
+        val_loss = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(
-                labels=context[:, 1:], logits=output["logits"][:, :-1]
+                labels=val_context[:, 1:], logits=val_output["logits"][:, :-1]
             )
         )
+        val_loss_summary = tf.summary.scalar("val_loss", val_loss)
 
-        if args.val_every > 0:
-            val_context = tf.compat.v1.placeholder(
-                tf.int32, [args.val_batch_size, None]
-            )
-            val_output = model.model(hparams=hparams, X=val_context)
-            val_loss = tf.reduce_mean(
-                tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    labels=val_context[:, 1:], logits=val_output["logits"][:, :-1]
-                )
-            )
-            val_loss_summary = tf.summary.scalar("val_loss", val_loss)
+    tf_sample = sample.sample_sequence(
+        hparams=hparams,
+        length=args.sample_length,
+        context=context,
+        batch_size=args.batch_size,
+        temperature=1.0,
+        top_k=args.top_k,
+        top_p=args.top_p,
+    )
 
-        tf_sample = sample.sample_sequence(
-            hparams=hparams,
-            length=args.sample_length,
-            context=context,
-            batch_size=args.batch_size,
-            temperature=1.0,
-            top_k=args.top_k,
-            top_p=args.top_p,
+    all_vars = [v for v in tf.compat.v1.trainable_variables() if "model" in v.name]
+    train_vars = (
+        [v for v in all_vars if "/h" in v.name]
+        if args.only_train_transformer_layers
+        else all_vars
+    )
+
+    counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
+    if os.path.exists(counter_path):
+        # Load the step number if we're resuming a run
+        # Add 1 so we don't immediately try to save again
+        with open(counter_path, "r") as i:
+            global_step = tf.Variable(
+                int(i.read()), trainable=False, name="global_step"
+            )
+    else:
+        global_step = tf.compat.v1.train.get_or_create_global_step()
+
+    if args.decay_lr_every > 0:
+        learning_rate = tf.compat.v1.train.exponential_decay(
+            args.learning_rate, global_step, args.decay_lr_every, 0.96, staircase=True
         )
+    else:
+        learning_rate = tf.constant(args.learning_rate)
 
-        all_vars = [v for v in tf.compat.v1.trainable_variables() if "model" in v.name]
-        train_vars = (
-            [v for v in all_vars if "/h" in v.name]
-            if args.only_train_transformer_layers
-            else all_vars
-        )
-
-        counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
-        if os.path.exists(counter_path):
-            # Load the step number if we're resuming a run
-            # Add 1 so we don't immediately try to save again
-            with open(counter_path, "r") as i:
-                global_step = tf.Variable(
-                    int(i.read()), trainable=False, name="global_step"
-                )
-        else:
-            global_step = tf.compat.v1.train.get_or_create_global_step()
-
-        sess.run(global_step.initializer)
-
-        if args.decay_lr_every > 0:
-            learning_rate = tf.compat.v1.train.exponential_decay(
-                args.learning_rate, global_step, args.decay_lr_every, 0.96, staircase=True
+    if args.optimizer == "adam":
+        if args.weight_decay:
+            opt = tf.contrib.opt.AdamWOptimizer(
+                learning_rate=learning_rate,
+                weight_decay=0.01 * learning_rate,
+                beta1=0.9,
+                beta2=0.98,
+                epsilon=1e-9,
             )
         else:
-            learning_rate = tf.constant(args.learning_rate)
-
-        if args.optimizer == "adam":
-
-            if args.weight_decay:
-                opt = tf.contrib.opt.AdamWOptimizer(
-                    learning_rate=learning_rate,
-                    weight_decay=0.01 * learning_rate,
-                    beta1=0.9,
-                    beta2=0.98,
-                    epsilon=1e-9,
-                )
-            else:
-                opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
-
-        elif args.optimizer == "sgd":
-
-            opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=learning_rate)
-
-        elif args.optimizer == "adafactor":
-
-            if args.decay_type == "adam":
-                decay_rate = adafactor_decay_rate_adam(0.98)
-            elif args.decay_type == "pow":
-                decay_rate = adafactor_decay_rate_pow(0.8)
-            else:
-                raise ValueError("unknown optimizer_adafactor_decay_type")
-
-            if args.weight_decay:
-                AdafactorWOptimizer = tf.contrib.opt.extend_with_decoupled_weight_decay(
-                    AdafactorOptimizer
-                )
-                opt = AdafactorWOptimizer(
-                    weight_decay=0.01 * learning_rate,
-                    learning_rate=learning_rate,
-                    decay_rate=decay_rate,
-                    beta1=0.0,
-                    name="AdafactorW",
-                )
-            else:
-                opt = AdafactorOptimizer(
-                    learning_rate=learning_rate,
-                    decay_rate=decay_rate,
-                    beta1=0.0,
-                    name="Adafactor",
-                )
+            opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate)
+    elif args.optimizer == "sgd":
+        opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=learning_rate)
+    elif args.optimizer == "adafactor":
+        if args.decay_type == "adam":
+            decay_rate = adafactor_decay_rate_adam(0.98)
+        elif args.decay_type == "pow":
+            decay_rate = adafactor_decay_rate_pow(0.8)
         else:
-            exit("Bad optimizer:", args.optimizer)
-
-        if args.accumulate_gradients > 1:
-            if args.memory_saving_gradients:
-                exit(
-                    "Memory saving gradients are not implemented for gradient accumulation yet."
-                )
-            opt = AccumulatingOptimizer(opt=opt, var_list=train_vars)
-            opt_reset = opt.reset()
-            opt_compute = opt.compute_gradients(loss)
-            opt_apply = opt.apply_gradients(global_step=global_step)
-            summary_loss = tf.compat.v1.summary.scalar("loss", opt_apply)
+            raise ValueError("unknown optimizer_adafactor_decay_type")
+        if args.weight_decay:
+            AdafactorWOptimizer = tf.contrib.opt.extend_with_decoupled_weight_decay(
+                AdafactorOptimizer
+            )
+            opt = AdafactorWOptimizer(
+                weight_decay=0.01 * learning_rate,
+                learning_rate=learning_rate,
+                decay_rate=decay_rate,
+                beta1=0.0,
+                name="AdafactorW",
+            )
         else:
-            if args.memory_saving_gradients:
-                opt_grads = memory_saving_gradients.gradients(loss, train_vars)
-            else:
-                opt_grads = tf.gradients(loss, train_vars)
-            opt_grads = list(zip(opt_grads, train_vars))
-            opt_apply = opt.apply_gradients(opt_grads, global_step=global_step)
-            summary_loss = tf.compat.v1.summary.scalar("loss", loss)
+            opt = AdafactorOptimizer(
+                learning_rate=learning_rate,
+                decay_rate=decay_rate,
+                beta1=0.0,
+                name="Adafactor",
+            )
+    else:
+        exit("Bad optimizer:", args.optimizer)
 
-        summary_lr = tf.compat.v1.summary.scalar("learning_rate", learning_rate)
-        summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
+    if args.accumulate_gradients > 1:
+        if args.memory_saving_gradients:
+            exit(
+                "Memory saving gradients are not implemented for gradient accumulation yet."
+            )
+        opt = AccumulatingOptimizer(opt=opt, var_list=train_vars)
+        opt_reset = opt.reset()
+        opt_compute = opt.compute_gradients(loss)
+        opt_apply = opt.apply_gradients(global_step=global_step)
+        summary_loss = tf.compat.v1.summary.scalar("loss", opt_apply)
+    else:
+        if args.memory_saving_gradients:
+            opt_grads = memory_saving_gradients.gradients(loss, train_vars)
+        else:
+            opt_grads = tf.gradients(loss, train_vars)
+        opt_grads = list(zip(opt_grads, train_vars))
+        opt_apply = opt.apply_gradients(opt_grads, global_step=global_step)
+        summary_loss = tf.compat.v1.summary.scalar("loss", loss)
 
-        summary_log = tf.compat.v1.summary.FileWriter(
+    summary_lr = tf.compat.v1.summary.scalar("learning_rate", learning_rate)
+    summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
+
+    summary_log = tf.compat.v1.summary.FileWriter(
+        os.path.join(CHECKPOINT_DIR, args.run_name)
+    )
+
+    saver = tf.compat.v1.train.Saver(var_list=all_vars, max_to_keep=1)
+
+    if args.restore_from == "latest":
+        ckpt = tf.train.latest_checkpoint(
             os.path.join(CHECKPOINT_DIR, args.run_name)
         )
+        if ckpt is None:
+            # Get fresh GPT weights if new run.
+            ckpt = tf.train.latest_checkpoint(
+                os.path.join("models", args.model_name)
+            )
+    elif args.restore_from == "fresh":
+        ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
+    else:
+        ckpt = tf.train.latest_checkpoint(args.restore_from)
 
-        saver = tf.compat.v1.train.Saver(var_list=all_vars, max_to_keep=1)
+    print("Loading dataset...")
+    chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
+    if args.reverse:
+        print("Reversing dataset...")
+        chunks = [c[::-1] for c in chunks]
+    data_sampler = Sampler(chunks)
+    if args.val_every > 0:
+        if args.val_dataset:
+            val_chunks = load_dataset(
+                enc, args.val_dataset, args.combine, encoding=args.encoding
+            )
+            if args.reverse:
+                print("Reversing val dataset...")
+                val_chunks = [c[::-1] for c in val_chunks]
+        else:
+            val_chunks = chunks
+    print("dataset has", data_sampler.total_size, "tokens")
 
+    if args.val_every > 0:
+        # Sample from validation set once with fixed seed to make
+        # it deterministic during training as well as across runs.
+        val_data_sampler = Sampler(val_chunks, seed=1)
+        val_batches = [
+            [
+                val_data_sampler.sample(hparams.n_ctx)
+                for _ in range(args.val_batch_size)
+            ]
+            for _ in range(args.val_batch_count)
+        ]
+
+    with tf.compat.v1.Session(config=config) as sess:
+
+        sess.run(global_step.initializer)
         sess.run(tf.compat.v1.global_variables_initializer())
 
-        if args.restore_from == "latest":
-            ckpt = tf.train.latest_checkpoint(
-                os.path.join(CHECKPOINT_DIR, args.run_name)
-            )
-            if ckpt is None:
-                # Get fresh GPT weights if new run.
-                ckpt = tf.train.latest_checkpoint(
-                    os.path.join("models", args.model_name)
-                )
-        elif args.restore_from == "fresh":
-            ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
-        else:
-            ckpt = tf.train.latest_checkpoint(args.restore_from)
         if ckpt is not None:
             print("-" * 40)
             print("Loading checkpoint", ckpt)
             saver.restore(sess, ckpt)
 
-        print("Loading dataset...")
-        chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
-        if args.reverse:
-            print("Reversing dataset...")
-            chunks = [c[::-1] for c in chunks]
-        data_sampler = Sampler(chunks)
-        if args.val_every > 0:
-            if args.val_dataset:
-                val_chunks = load_dataset(
-                    enc, args.val_dataset, args.combine, encoding=args.encoding
-                )
-                if args.reverse:
-                    print("Reversing val dataset...")
-                    val_chunks = [c[::-1] for c in val_chunks]
-            else:
-                val_chunks = chunks
-        print("dataset has", data_sampler.total_size, "tokens")
+        print("-" * 40)
         print(
             f"Training... (global step: {sess.run(tf.compat.v1.train.get_global_step())})"
         )
-
-        if args.val_every > 0:
-            # Sample from validation set once with fixed seed to make
-            # it deterministic during training as well as across runs.
-            val_data_sampler = Sampler(val_chunks, seed=1)
-            val_batches = [
-                [
-                    val_data_sampler.sample(hparams.n_ctx)
-                    for _ in range(args.val_batch_size)
-                ]
-                for _ in range(args.val_batch_count)
-            ]
 
         def save():
             maketree(os.path.join(CHECKPOINT_DIR, args.run_name))
