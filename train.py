@@ -417,7 +417,10 @@ def main():
     if args.reverse:
         print("Reversing dataset...")
         chunks = [c[::-1] for c in chunks]
+
     data_sampler = Sampler(chunks)
+    print("dataset has", data_sampler.total_size, "tokens")
+
     if args.val_every > 0:
         if args.val_dataset:
             val_chunks = load_dataset(
@@ -428,7 +431,6 @@ def main():
                 val_chunks = [c[::-1] for c in val_chunks]
         else:
             val_chunks = chunks
-    print("dataset has", data_sampler.total_size, "tokens")
 
     if args.val_every > 0:
         # Sample from validation set once with fixed seed to make
