@@ -252,10 +252,17 @@ def main():
 
     args = parser.parse_args()
 
+
+    # ----------------------------------------
+    # encoder
+
     if args.encoder == "default":
         enc = encoder.get_encoder(args.model_name, "models")
     elif args.encoder == "sentencepiece":
         enc = encoder_sp.get_encoder(args.model_name, "models")
+
+    # ----------------------------------------
+    # params
 
     hparams = model.default_hparams()
     with open(os.path.join("models", args.model_name, "hparams.json")) as f:
@@ -311,6 +318,9 @@ def main():
         else all_vars
     )
 
+    # ----------------------------------------
+    # step
+
     counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
     if os.path.exists(counter_path):
         # Load the step number if we're resuming a run
@@ -322,12 +332,26 @@ def main():
     else:
         global_step = tf.compat.v1.train.get_or_create_global_step()
 
+
+    # ----------------------------------------
+    # summary init
+    summary_log = tf.compat.v1.summary.FileWriter(
+        os.path.join(CHECKPOINT_DIR, args.run_name)
+    )
+
+    # ----------------------------------------
+    # learning rate
+
     if args.decay_lr_every > 0:
         learning_rate = tf.compat.v1.train.exponential_decay(
             args.learning_rate, global_step, args.decay_lr_every, 0.96, staircase=True
         )
     else:
         learning_rate = tf.constant(args.learning_rate)
+    summary_lr = tf.compat.v1.summary.scalar("learning_rate", learning_rate)
+
+    # ----------------------------------------
+    # optimizer
 
     if args.optimizer == "adam":
         if args.weight_decay:
@@ -389,14 +413,12 @@ def main():
         opt_apply = opt.apply_gradients(opt_grads, global_step=global_step)
         summary_loss = tf.compat.v1.summary.scalar("loss", loss)
 
-    summary_lr = tf.compat.v1.summary.scalar("learning_rate", learning_rate)
     summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
 
-    summary_log = tf.compat.v1.summary.FileWriter(
-        os.path.join(CHECKPOINT_DIR, args.run_name)
-    )
-
     saver = tf.compat.v1.train.Saver(var_list=all_vars, max_to_keep=1)
+
+    # ----------------------------------------
+    # restore ckpt
 
     if args.restore_from == "latest":
         ckpt = tf.train.latest_checkpoint(
@@ -455,9 +477,6 @@ def main():
             saver.restore(sess, ckpt)
 
         print("-" * 40)
-        print(
-            f"Training... (global step: {sess.run(tf.compat.v1.train.get_global_step())})"
-        )
 
         def save():
             maketree(os.path.join(CHECKPOINT_DIR, args.run_name))
