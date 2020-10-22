@@ -266,8 +266,9 @@ def main():
             "Can't get samples longer than window size: %s" % hparams.n_ctx
         )
 
-    config = tf.compat.v1.ConfigProto()
+    config = tf.compat.v1.ConfigProto(allow_soft_placement=True) # , log_device_placement=True)
     config.gpu_options.allow_growth = True
+    config.gpu_options.allocator_type = 'BFC'
     config.graph_options.rewrite_options.layout_optimizer = (
         rewriter_config_pb2.RewriterConfig.OFF
     )
