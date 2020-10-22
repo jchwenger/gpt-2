@@ -25,7 +25,7 @@ CHECKPOINT_DIR = "checkpoint"
 SAMPLE_DIR = "samples"
 
 # https://stackoverflow.com/a/54927279
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 parser = argparse.ArgumentParser(
     description="Fine-tune GPT-2 on your custom dataset.",
@@ -278,10 +278,7 @@ def main():
     config = tf.compat.v1.ConfigProto(
         allow_soft_placement=True,
         # log_device_placement=True,
-        gpu_options=tf.compat.v1.GPUOptions(
-            allow_growth=True,
-            allocator_type="BFC",
-        ),
+        gpu_options=tf.compat.v1.GPUOptions(allow_growth=True, allocator_type="BFC",),
         graph_options=tf.compat.v1.GraphOptions(
             rewrite_options=rewriter_config_pb2.RewriterConfig(
                 layout_optimizer=rewriter_config_pb2.RewriterConfig.ON,
@@ -302,9 +299,7 @@ def main():
     )
 
     if args.val_every > 0:
-        val_context = tf.compat.v1.placeholder(
-            tf.int32, [args.val_batch_size, None]
-        )
+        val_context = tf.compat.v1.placeholder(tf.int32, [args.val_batch_size, None])
         val_output = model.model(hparams=hparams, X=val_context)
         val_loss = tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -433,18 +428,17 @@ def main():
     # restore ckpt
 
     if args.restore_from == "latest":
-        ckpt = tf.train.latest_checkpoint(
-            os.path.join(CHECKPOINT_DIR, args.run_name)
-        )
+        ckpt = tf.train.latest_checkpoint(os.path.join(CHECKPOINT_DIR, args.run_name))
         if ckpt is None:
             # Get fresh GPT weights if new run.
-            ckpt = tf.train.latest_checkpoint(
-                os.path.join("models", args.model_name)
-            )
+            ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
     elif args.restore_from == "fresh":
         ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
     else:
         ckpt = tf.train.latest_checkpoint(args.restore_from)
+
+    # ----------------------------------------
+    # loading ds
 
     print("Loading dataset...")
     chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
@@ -471,12 +465,12 @@ def main():
         # it deterministic during training as well as across runs.
         val_data_sampler = Sampler(val_chunks, seed=1)
         val_batches = [
-            [
-                val_data_sampler.sample(hparams.n_ctx)
-                for _ in range(args.val_batch_size)
-            ]
+            [val_data_sampler.sample(hparams.n_ctx) for _ in range(args.val_batch_size)]
             for _ in range(args.val_batch_count)
         ]
+
+    # ----------------------------------------
+    # la session
 
     with tf.compat.v1.Session(config=config) as sess:
 
@@ -493,15 +487,9 @@ def main():
         def save():
             maketree(os.path.join(CHECKPOINT_DIR, args.run_name))
             gs = sess.run(tf.compat.v1.train.get_global_step())
-            print(
-                "Saving",
-                os.path.join(CHECKPOINT_DIR, args.run_name, "model-{}").format(gs),
-            )
-            saver.save(
-                sess,
-                os.path.join(CHECKPOINT_DIR, args.run_name, "model"),
-                global_step=gs,
-            )
+            mod_path = os.path.join(CHECKPOINT_DIR, args.run_name, f"model")
+            print(f"Saving {mod_path}-{gs}")
+            saver.save(sess, mod_path, global_step=gs)
             with open(counter_path, "w") as o:
                 o.write(str(gs) + "\n")
 
@@ -521,7 +509,7 @@ def main():
                         text = enc.decode(out[i][::-1])
                     else:
                         text = enc.decode(out[i])
-                    text = "======== SAMPLE {} ========\n{}\n".format(index + 1, text)
+                    text = f"======== SAMPLE {index + 1} ========\n{text}\n"
                     all_text.append(text)
                     index += 1
             if args.reverse:
@@ -530,11 +518,8 @@ def main():
             print(text)
             maketree(os.path.join(SAMPLE_DIR, args.run_name))
             gs = sess.run(tf.compat.v1.train.get_global_step())
-            with open(
-                os.path.join(SAMPLE_DIR, args.run_name, "samples-{}").format(gs),
-                "w",
-                encoding=args.encoding,
-            ) as o:
+            sample_path = os.path.join(SAMPLE_DIR, args.run_name, f"samples-{gs}")
+            with open(sample_path, "w", encoding=args.encoding) as o:
                 o.write("\n".join(all_text))
 
         def validation():
@@ -548,9 +533,7 @@ def main():
             summary_log.add_summary(v_summary, gs)
             summary_log.flush()
             print(
-                "[{counter} | {time:2.2f}] validation loss = {loss:2.2f}".format(
-                    counter=gs, time=time.time() - start_time, loss=v_val_loss
-                )
+                f"[{gs} | {time.time() - start_time:2.2f}] validation loss = {v_val_loss:2.2f}"
             )
 
         def sample_batch():
@@ -600,13 +583,7 @@ def main():
 
                 avg_loss = (avg_loss[0] * 0.9999 + v_loss, avg_loss[1] * 0.9999 + 1.0)
 
-                msg = "[{counter} | {time:2.2f}] loss={loss:2.2f} avg={avg:2.2f} lr={lr}".format(
-                    counter=gs,
-                    time=time.time() - start_time,
-                    loss=v_loss,
-                    avg=avg_loss[0] / avg_loss[1],
-                    lr=sess.run(learning_rate),
-                )
+                msg = f"[{gs} | {time.time() - start_time:2.2f}] loss={v_loss:2.2f} avg={avg_loss[0] / avg_loss[1]:2.2f} lr={sess.run(learning_rate)}"
 
                 if args.print_train_sample:
                     msg += " | Training on: "
