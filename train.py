@@ -275,12 +275,22 @@ def main():
             "Can't get samples longer than window size: %s" % hparams.n_ctx
         )
 
-    config = tf.compat.v1.ConfigProto(allow_soft_placement=True) # , log_device_placement=True)
-    config.gpu_options.allow_growth = True
-    config.gpu_options.allocator_type = 'BFC'
-    config.graph_options.rewrite_options.layout_optimizer = (
-        rewriter_config_pb2.RewriterConfig.OFF
+    config = tf.compat.v1.ConfigProto(
+        allow_soft_placement=True,
+        # log_device_placement=True,
+        gpu_options=tf.compat.v1.GPUOptions(
+            allow_growth=True,
+            allocator_type="BFC",
+        ),
+        graph_options=tf.compat.v1.GraphOptions(
+            rewrite_options=rewriter_config_pb2.RewriterConfig(
+                layout_optimizer=rewriter_config_pb2.RewriterConfig.ON,
+            ),
+        ),
     )
+
+    # ----------------------------------------
+    # la compute
 
     context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
     context_in = randomize(context, hparams, args.noise) if args.noise else context
@@ -334,9 +344,9 @@ def main():
     else:
         global_step = tf.compat.v1.train.get_or_create_global_step()
 
-
     # ----------------------------------------
     # summary init
+
     summary_log = tf.compat.v1.summary.FileWriter(
         os.path.join(CHECKPOINT_DIR, args.run_name)
     )
@@ -443,7 +453,7 @@ def main():
         chunks = [c[::-1] for c in chunks]
 
     data_sampler = Sampler(chunks)
-    print("dataset has", data_sampler.total_size, "tokens")
+    print("Dataset has", data_sampler.total_size, "tokens")
 
     if args.val_every > 0:
         if args.val_dataset:
