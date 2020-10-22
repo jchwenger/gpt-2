@@ -399,7 +399,7 @@ def main():
                 name="Adafactor",
             )
     else:
-        exit("Bad optimizer:", args.optimizer)
+        exit(f"Bad optimizer: {args.optimizer}")
 
     if args.accumulate_gradients > 1:
         if args.memory_saving_gradients:
