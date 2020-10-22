@@ -44,7 +44,16 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--precision",
+    type=str,
+    choices=["float32", "float16", "bfloat16"],
+    default="float32",
+    help="The precision to use for the network. Choices: float32, float16, bfloat16 (TPUs). Defaults to float32.",
+)
+
+parser.add_argument(
     "--special_tokens",
+    default="<|endoftext|>",
     type=str,
     help="""Adding special markers in the vocabulary, e.g. markers. Separate by
     comma and enclose in quotes!""",
@@ -62,7 +71,8 @@ parser.add_argument(
     type=int,
     default=50000,
     help="""Concatenate files with <|endoftext|> separator into chunks of this
-    minimum size. Defaults to: 50000.""",)
+    minimum size. Defaults to: 50000.""",
+)
 
 parser.add_argument("--encoding", type=str, default="utf-8", help="Default: utf-8.")
 
@@ -80,22 +90,24 @@ def hparams_from_input():
     print("\tn_embd: 768")
     print("\tn_head: 12")
     print("\tn_layer: 12")
+    print("\tprecision: float32")
     answ = input("do you accept the default params? [y/n] ")
-    if answ in ("y", "Y", "1"):
+    hparams = {
+        "n_vocab": 50257,
+        "n_ctx": 1024,
+        "n_embd": 768,
+        "n_head": 12,
+        "n_layer": 12,
+        "le_dtype": "float32",
+    }
+    if answ not in ("y", "Y", "1"):
         hparams = {
-            "n_vocab": 50257,
-            "n_ctx": 1024,
-            "n_embd": 768,
-            "n_head": 12,
-            "n_layer": 12,
-        }
-    else:
-        hparams = {
-            "n_vocab": questionnaire("vocab"),
-            "n_ctx": questionnaire("attention window"),
-            "n_embd": questionnaire("embedding"),
-            "n_head": questionnaire("heads"),
-            "n_layer": questionnaire("layers"),
+            "n_vocab": questionnaire("vocab", hparams["n_vocab"]),
+            "n_ctx": questionnaire("attention window", hparams["n_ctx"]),
+            "n_embd": questionnaire("embedding", hparams["n_embd"]),
+            "n_head": questionnaire("heads", hparams["n_head"]),
+            "n_layer": questionnaire("layers", hparams["n_layer"]),
+            "le_dtype": questionnaire("precision", hparams["le_dtype"]),
         }
 
     fname = os.path.join("models", args.model_name, "hparams.json")
@@ -106,11 +118,25 @@ def hparams_from_input():
     return hparams
 
 
-def questionnaire(name):
-    answ = input(f"please give the desired {name} size (int): ")
-    while not int(answ):
-        answ = input("please give a whole number (int): ")
-    return abs(int(answ))
+def questionnaire(name, hparam):
+    if name == "precision":
+        answ = input(
+            f"desired precision, float32, float16, or bfloat16 (press enter for default): "
+        )
+        if answ == "":
+            return hparam
+        while answ not in ["float32", "float16", "bfloat16"]:
+            answ = input(
+                "please type the correct precision (float32, float16, or bfloat16)"
+            )
+        return answ
+    else:
+        answ = input(f"the desired {name} size (int) (press enter for default): ")
+        if answ == "":
+            return hparam
+        while not int(answ):
+            answ = input("please give a whole number (int): ")
+        return abs(int(answ))
 
 
 def train(args):
@@ -154,11 +180,11 @@ def train(args):
         enc.tok.add_special_tokens(args.special_tokens)
         chunks = load_dataset(enc, args.source, args.combine, args.encoding)
         # a txt file, we take only its name
-        if args.source.endswith('.txt'):
+        if args.source.endswith(".txt"):
             source_name = os.path.splitext(os.path.basename(args.source))[0]
-        elif args.source.endswith('/'): # a dir ending in /
+        elif args.source.endswith("/"):  # a dir ending in /
             source_name = os.path.basename(args.source[:-1])
-        else: # just a dir
+        else:  # just a dir
             source_name = os.path.basename(args.source)
         out_name = f"{source_name}-{args.model_name}"
         print(f"writing {out_name}.npz")
