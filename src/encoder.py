@@ -48,7 +48,7 @@ def get_pairs(word):
 
 class Encoder:
     def __init__(
-        self, encoder, bpe_merges, errors="replace", special_tokens=["<|endoftext|>"]
+        self, encoder, bpe_merges, errors="replace", special_tokens=None
     ):
         self.encoder = encoder
         self.decoder = {v: k for k, v in self.encoder.items()}
@@ -144,11 +144,13 @@ class Encoder:
 
 def get_encoder(model_name, model_dir="checkpoint", special_tokens=None):
     enc_path = os.path.join(model_dir, model_name, "encoder.json")
+    print("-" * 40)
     print("loading encoder:", enc_path)
     with open(enc_path, "r") as f:
         encoder = json.load(f)
     bpe_path = os.path.join(model_dir, model_name, "vocab.bpe")
     print("loading bpe:", bpe_path)
+    print("-" * 40)
     with open(bpe_path, "r", encoding="utf-8") as f:
         bpe_data = f.read()
     bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split("\n")[1:-1]]
