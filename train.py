@@ -250,6 +250,31 @@ def randomize(context, hparams, p):
         return context
 
 
+def le_global_step():
+    counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
+    if os.path.exists(counter_path):
+        # Load the step number if we're resuming a run
+        # Add 1 so we don't immediately try to save again
+        with open(counter_path, "r") as i:
+            global_step = tf.Variable(
+                int(i.read()), trainable=False, name="global_step"
+            )
+    else:
+        global_step = tf.compat.v1.train.get_or_create_global_step()
+    return global_step
+
+
+def la_learning_rate(global_step):
+    if args.decay_lr_every > 0:
+        learning_rate = tf.compat.v1.train.exponential_decay(
+            args.learning_rate, global_step, args.decay_lr_every, 0.96, staircase=True
+        )
+    else:
+        learning_rate = tf.constant(args.learning_rate)
+    summary_lr = tf.compat.v1.summary.scalar("learning_rate", learning_rate)
+    return learning_rate, summary_lr
+
+
 def main():
 
     args = parser.parse_args()
@@ -294,15 +319,14 @@ def main():
     )
 
     # ----------------------------------------
+    # step
+
+    global_step = le_global_step()
+
+    # ----------------------------------------
     # learning rate
 
-    if args.decay_lr_every > 0:
-        learning_rate = tf.compat.v1.train.exponential_decay(
-            args.learning_rate, global_step, args.decay_lr_every, 0.96, staircase=True
-        )
-    else:
-        learning_rate = tf.constant(args.learning_rate)
-    summary_lr = tf.compat.v1.summary.scalar("learning_rate", learning_rate)
+    learning_rate, summary_lr = la_learning_rate(global_step)
 
     # ----------------------------------------
     # optimizer
@@ -386,20 +410,6 @@ def main():
         if args.only_train_transformer_layers
         else all_vars
     )
-
-    # ----------------------------------------
-    # step
-
-    counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
-    if os.path.exists(counter_path):
-        # Load the step number if we're resuming a run
-        # Add 1 so we don't immediately try to save again
-        with open(counter_path, "r") as i:
-            global_step = tf.Variable(
-                int(i.read()), trainable=False, name="global_step"
-            )
-    else:
-        global_step = tf.compat.v1.train.get_or_create_global_step()
 
     if args.accumulate_gradients > 1:
         if args.memory_saving_gradients:
