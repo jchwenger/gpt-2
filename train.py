@@ -310,6 +310,42 @@ def main():
         enc = encoder_sp.get_encoder(args.model_name, "models")
 
     # ----------------------------------------
+    # data sampling
+
+    print("Loading dataset...")
+    chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
+    if args.reverse:
+        print("Reversing dataset...")
+        chunks = [c[::-1] for c in chunks]
+
+    data_sampler = Sampler(chunks)
+    print("Dataset has", data_sampler.total_size, "tokens")
+
+    if args.val_every > 0:
+        if args.val_dataset is not None:
+            val_chunks = load_dataset(
+                enc, args.val_dataset, args.combine, encoding=args.encoding
+            )
+            if args.reverse:
+                print("Reversing val dataset...")
+                val_chunks = [c[::-1] for c in val_chunks]
+        else:
+            val_chunks = chunks
+
+        # Sample from validation set once with fixed seed to make
+        # it deterministic during training as well as across runs.
+        val_data_sampler = Sampler(val_chunks, seed=1)
+
+    def sample_batch():
+        return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
+
+    def sample_val_batches():
+        return [
+            [val_data_sampler.sample(hparams.n_ctx) for _ in range(args.val_batch_size)]
+            for _ in range(args.val_batch_count)
+        ]
+
+    # ----------------------------------------
     # params
 
     hparams = model.default_hparams()
@@ -333,19 +369,13 @@ def main():
     )
 
     # ----------------------------------------
-    # summary init
+    # summary, step, learning rate
 
     summary_log = tf.compat.v1.summary.FileWriter(
         os.path.join(CHECKPOINT_DIR, args.run_name)
     )
 
-    # ----------------------------------------
-    # step
-
     global_step = le_global_step()
-
-    # ----------------------------------------
-    # learning rate
 
     learning_rate, summary_lr = la_learning_rate(global_step)
 
@@ -410,7 +440,6 @@ def main():
             )
         )
 
-
     context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
     loss = compute(context)
 
@@ -459,42 +488,6 @@ def main():
 
     # validation data added in validation()
     summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
-
-    # ----------------------------------------
-    # data sampling
-
-    print("Loading dataset...")
-    chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
-    if args.reverse:
-        print("Reversing dataset...")
-        chunks = [c[::-1] for c in chunks]
-
-    data_sampler = Sampler(chunks)
-    print("Dataset has", data_sampler.total_size, "tokens")
-
-    if args.val_every > 0:
-        if args.val_dataset is not None:
-            val_chunks = load_dataset(
-                enc, args.val_dataset, args.combine, encoding=args.encoding
-            )
-            if args.reverse:
-                print("Reversing val dataset...")
-                val_chunks = [c[::-1] for c in val_chunks]
-        else:
-            val_chunks = chunks
-
-        # Sample from validation set once with fixed seed to make
-        # it deterministic during training as well as across runs.
-        val_data_sampler = Sampler(val_chunks, seed=1)
-
-    def sample_batch():
-        return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
-
-    def sample_val_batches():
-        return [
-            [val_data_sampler.sample(hparams.n_ctx) for _ in range(args.val_batch_size)]
-            for _ in range(args.val_batch_count)
-        ]
 
     # ----------------------------------------
     # la session
