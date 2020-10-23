@@ -438,7 +438,7 @@ def main():
         ckpt = tf.train.latest_checkpoint(args.restore_from)
 
     # ----------------------------------------
-    # loading ds
+    # data sampling
 
     print("Loading dataset...")
     chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
@@ -468,6 +468,9 @@ def main():
             [val_data_sampler.sample(hparams.n_ctx) for _ in range(args.val_batch_size)]
             for _ in range(args.val_batch_count)
         ]
+
+    def sample_batch():
+        return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
 
     # ----------------------------------------
     # la session
@@ -536,9 +539,6 @@ def main():
                 f"[{gs} | {time.time() - start_time:2.2f}] validation loss = {v_val_loss:2.2f}"
             )
 
-        def sample_batch():
-            return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
-
         def delete_previous_checkpoints():
             gs = sess.run(tf.compat.v1.train.get_global_step())
             for fname in os.listdir(f"checkpoint/{args.run_name}"):
@@ -587,12 +587,9 @@ def main():
 
                 if args.print_train_sample:
                     msg += " | Training on: "
+                    smpl = enc.decode(smpl_batch[0]) if not args.reverse else enc.decode(smpl_batch[0][::-1])
                     # get tty width, https://stackoverflow.com/a/943921
                     columns = int(os.popen("stty size", "r").read().split()[1])
-                    if args.reverse:
-                        smpl = enc.decode(smpl_batch[0][::-1])
-                    else:
-                        smpl = enc.decode(smpl_batch[0])
                     msg += smpl.replace("\n", " ")[: columns - len(msg) - 5] + "..."
                 print(msg)
 
