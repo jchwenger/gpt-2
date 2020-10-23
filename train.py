@@ -275,6 +275,28 @@ def la_learning_rate(global_step):
     return learning_rate, summary_lr
 
 
+def le_ckpt():
+    if args.restore_from == "latest":
+        ckpt = tf.train.latest_checkpoint(os.path.join(CHECKPOINT_DIR, args.run_name))
+        if ckpt is None:
+            # Get fresh GPT weights if new run.
+            ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
+    elif args.restore_from == "fresh":
+        ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
+    else:
+        ckpt = tf.train.latest_checkpoint(args.restore_from)
+    return ckpt
+
+
+def append_train_sample(enc, msg, batch):
+    msg += " | "
+    smpl = enc.decode(batch[0]) if not args.reverse else enc.decode(batch[0][::-1])
+    # get tty width, https://stackoverflow.com/a/943921
+    columns = int(os.popen("stty size", "r").read().split()[1])
+    msg += smpl.replace("\n", " ")[: columns - len(msg) - 5] + "..."
+    return msg
+
+
 def main():
 
     args = parser.parse_args()
@@ -411,6 +433,8 @@ def main():
         else all_vars
     )
 
+    saver = tf.compat.v1.train.Saver(var_list=all_vars, max_to_keep=1)
+
     if args.accumulate_gradients > 1:
         if args.memory_saving_gradients:
             exit(
@@ -430,22 +454,8 @@ def main():
         opt_apply = opt.apply_gradients(opt_grads, global_step=global_step)
         summary_loss = tf.compat.v1.summary.scalar("loss", loss)
 
+    # validation data added in validation()
     summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
-
-    saver = tf.compat.v1.train.Saver(var_list=all_vars, max_to_keep=1)
-
-    # ----------------------------------------
-    # restore ckpt
-
-    if args.restore_from == "latest":
-        ckpt = tf.train.latest_checkpoint(os.path.join(CHECKPOINT_DIR, args.run_name))
-        if ckpt is None:
-            # Get fresh GPT weights if new run.
-            ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
-    elif args.restore_from == "fresh":
-        ckpt = tf.train.latest_checkpoint(os.path.join("models", args.model_name))
-    else:
-        ckpt = tf.train.latest_checkpoint(args.restore_from)
 
     # ----------------------------------------
     # data sampling
@@ -482,14 +492,6 @@ def main():
     def sample_batch():
         return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
 
-    def append_train_sample(msg, batch):
-        msg += " | Training on: "
-        smpl = enc.decode(smpl_batch[0]) if not args.reverse else enc.decode(smpl_batch[0][::-1])
-        # get tty width, https://stackoverflow.com/a/943921
-        columns = int(os.popen("stty size", "r").read().split()[1])
-        msg += smpl.replace("\n", " ")[: columns - len(msg) - 5] + "..."
-        return msg
-
     # ----------------------------------------
     # la session
 
@@ -498,6 +500,10 @@ def main():
         sess.run(global_step.initializer)
         sess.run(tf.compat.v1.global_variables_initializer())
 
+        # ----------------------------------------
+        # restore ckpt
+
+        ckpt = le_ckpt()
         if ckpt is not None:
             print("-" * 40)
             print("Loading checkpoint", ckpt)
@@ -606,7 +612,7 @@ def main():
 
                 msg = f"[{gs} | {time.time() - start_time:2.2f}] loss={v_loss:2.2f} avg={avg_loss[0] / avg_loss[1]:2.2f} lr={sess.run(learning_rate)}"
                 if args.print_train_sample:
-                    msg = append_train_sample(msg, smpl_batch)
+                    msg = append_train_sample(enc, msg, smpl_batch)
                 print(msg)
 
         except KeyboardInterrupt:
