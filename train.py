@@ -496,9 +496,10 @@ def main():
         print("-" * 40)
 
         def save():
+            counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
+            mod_path = os.path.join(CHECKPOINT_DIR, args.run_name, "model")
             maketree(os.path.join(CHECKPOINT_DIR, args.run_name))
             gs = sess.run(tf.compat.v1.train.get_global_step())
-            mod_path = os.path.join(CHECKPOINT_DIR, args.run_name, "model")
             print(f"Saving {mod_path}-{gs}")
             saver.save(sess, mod_path, global_step=gs)
             with open(counter_path, "w") as o:
@@ -605,4 +606,5 @@ def main():
 
 
 if __name__ == "__main__":
+    args = parser.parse_args()
     main()
