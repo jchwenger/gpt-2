@@ -287,59 +287,6 @@ def main():
     )
 
     # ----------------------------------------
-    # la compute
-
-    context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
-    context_in = randomize(context, hparams, args.noise) if args.noise else context
-    output = model.model(hparams=hparams, X=context_in)
-    loss = tf.reduce_mean(
-        tf.nn.sparse_softmax_cross_entropy_with_logits(
-            labels=context[:, 1:], logits=output["logits"][:, :-1]
-        )
-    )
-
-    if args.val_every > 0:
-        val_context = tf.compat.v1.placeholder(tf.int32, [args.val_batch_size, None])
-        val_output = model.model(hparams=hparams, X=val_context)
-        val_loss = tf.reduce_mean(
-            tf.nn.sparse_softmax_cross_entropy_with_logits(
-                labels=val_context[:, 1:], logits=val_output["logits"][:, :-1]
-            )
-        )
-        val_loss_summary = tf.summary.scalar("val_loss", val_loss)
-
-    tf_sample = sample.sample_sequence(
-        hparams=hparams,
-        length=args.sample_length,
-        context=context,
-        batch_size=args.batch_size,
-        temperature=1.0,
-        top_k=args.top_k,
-        top_p=args.top_p,
-    )
-
-    all_vars = [v for v in tf.compat.v1.trainable_variables() if "model" in v.name]
-    train_vars = (
-        [v for v in all_vars if "/h" in v.name]
-        if args.only_train_transformer_layers
-        else all_vars
-    )
-
-    # ----------------------------------------
-    # step
-
-    counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
-    if os.path.exists(counter_path):
-        # Load the step number if we're resuming a run
-        # Add 1 so we don't immediately try to save again
-        with open(counter_path, "r") as i:
-            global_step = tf.Variable(
-                int(i.read()), trainable=False, name="global_step"
-            )
-    else:
-        global_step = tf.compat.v1.train.get_or_create_global_step()
-
-    # ----------------------------------------
     # summary init
 
     summary_log = tf.compat.v1.summary.FileWriter(
@@ -400,6 +347,59 @@ def main():
             )
     else:
         exit(f"Bad optimizer: {args.optimizer}")
+
+    # ----------------------------------------
+    # la compute
+
+    def compute(context, validation=False):
+        if not validation:
+            context_in = randomize(context, hparams, args.noise) if args.noise else context
+        output = model.model(hparams=hparams, X=context_in)
+        return tf.reduce_mean(
+            tf.nn.sparse_softmax_cross_entropy_with_logits(
+                labels=context[:, 1:], logits=output["logits"][:, :-1]
+            )
+        )
+
+
+    context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
+    loss = compute(context)
+
+    if args.val_every > 0:
+        val_context = tf.compat.v1.placeholder(tf.int32, [args.val_batch_size, None])
+        val_loss = compute(val_context, validation=True)
+        val_loss_summary = tf.summary.scalar("val_loss", val_loss)
+
+    tf_sample = sample.sample_sequence(
+        hparams=hparams,
+        length=args.sample_length,
+        context=context,
+        batch_size=args.batch_size,
+        temperature=1.0,
+        top_k=args.top_k,
+        top_p=args.top_p,
+    )
+
+    all_vars = [v for v in tf.compat.v1.trainable_variables() if "model" in v.name]
+    train_vars = (
+        [v for v in all_vars if "/h" in v.name]
+        if args.only_train_transformer_layers
+        else all_vars
+    )
+
+    # ----------------------------------------
+    # step
+
+    counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
+    if os.path.exists(counter_path):
+        # Load the step number if we're resuming a run
+        # Add 1 so we don't immediately try to save again
+        with open(counter_path, "r") as i:
+            global_step = tf.Variable(
+                int(i.read()), trainable=False, name="global_step"
+            )
+    else:
+        global_step = tf.compat.v1.train.get_or_create_global_step()
 
     if args.accumulate_gradients > 1:
         if args.memory_saving_gradients:
