@@ -467,6 +467,9 @@ def main():
 
     saver = tf.compat.v1.train.Saver(var_list=all_vars, max_to_keep=1)
 
+    # ----------------------------------------
+    # optimization
+
     if args.accumulate_gradients > 1:
         if args.memory_saving_gradients:
             exit(
@@ -494,19 +497,37 @@ def main():
 
     with tf.compat.v1.Session(config=config) as sess:
 
-        sess.run(global_step.initializer)
-        sess.run(tf.compat.v1.global_variables_initializer())
-
         # ----------------------------------------
-        # restore ckpt
+        # all ops under the session
 
-        ckpt = le_ckpt()
-        if ckpt is not None:
-            print("-" * 40)
-            print("Loading checkpoint", ckpt)
-            saver.restore(sess, ckpt)
+        def training_step():
+            if args.val_every > 0 and (gs % args.val_every == 0 or gs == 1):
+                validation()
+            if args.accumulate_gradients > 1:
+                sess.run(opt_reset)
+                for _ in range(args.accumulate_gradients):
+                    smpl_batch = sample_batch()
+                    sess.run(opt_compute, feed_dict={context: smpl_batch})
+                (v_loss, v_summary) = sess.run((opt_apply, summaries))
+            else:
+                smpl_batch = sample_batch()
+                (_, v_loss, v_summary) = sess.run(
+                    (opt_apply, loss, summaries), feed_dict={context: smpl_batch},
+                )
+            return v_loss, v_summary
 
-        print("-" * 40)
+        def validation():
+            losses = []
+            for batch in sample_val_batches():
+                losses.append(sess.run(val_loss, feed_dict={val_context: batch}))
+            v_val_loss = np.mean(losses)
+            v_summary = sess.run(val_loss_summary, feed_dict={val_loss: v_val_loss})
+            gs = sess.run(tf.compat.v1.train.get_global_step())
+            summary_log.add_summary(v_summary, gs)
+            summary_log.flush()
+            print(
+                f"[{gs} | {time.time() - start_time:2.2f}] validation loss = {v_val_loss:2.2f}"
+            )
 
         def save():
             counter_path = os.path.join(CHECKPOINT_DIR, args.run_name, "counter")
@@ -517,6 +538,15 @@ def main():
             saver.save(sess, mod_path, global_step=gs)
             with open(counter_path, "w") as o:
                 o.write(str(gs) + "\n")
+
+        def delete_previous_checkpoints():
+            gs = sess.run(tf.compat.v1.train.get_global_step())
+            for fname in os.listdir(f"checkpoint/{args.run_name}"):
+                if regex.match(r"model-*", fname) and not regex.match(
+                    r"model-" + str(gs) + r"*", fname
+                ):
+                    print(f"(deleting former checkpoint: {fname})")
+                    os.remove(os.path.join("checkpoint", args.run_name, fname))
 
         def generate_samples():
             print("Generating samples...")
@@ -547,32 +577,27 @@ def main():
             with open(sample_path, "w", encoding=args.encoding) as o:
                 o.write("\n".join(all_text))
 
-        def validation():
-            losses = []
-            for batch in sample_val_batches():
-                losses.append(sess.run(val_loss, feed_dict={val_context: batch}))
-            v_val_loss = np.mean(losses)
-            v_summary = sess.run(val_loss_summary, feed_dict={val_loss: v_val_loss})
-            gs = sess.run(tf.compat.v1.train.get_global_step())
-            summary_log.add_summary(v_summary, gs)
-            summary_log.flush()
-            print(
-                f"[{gs} | {time.time() - start_time:2.2f}] validation loss = {v_val_loss:2.2f}"
-            )
+        # ----------------------------------------
+        # la session, ckpt, init avg + time
 
-        def delete_previous_checkpoints():
-            gs = sess.run(tf.compat.v1.train.get_global_step())
-            for fname in os.listdir(f"checkpoint/{args.run_name}"):
-                if regex.match(r"model-*", fname) and not regex.match(
-                    r"model-" + str(gs) + r"*", fname
-                ):
-                    print(f"(deleting former checkpoint: {fname})")
-                    os.remove(os.path.join("checkpoint", args.run_name, fname))
+        sess.run(global_step.initializer)
+        sess.run(tf.compat.v1.global_variables_initializer())
+
+        ckpt = le_ckpt()
+        if ckpt is not None:
+            print("-" * 40)
+            print("Loading checkpoint", ckpt)
+            saver.restore(sess, ckpt)
+        print("-" * 40)
 
         avg_loss = (0.0, 0.0)
         start_time = time.time()
 
+        # ----------------------------------------
+        # training loop
+
         try:
+
             while True:
 
                 gs = sess.run(tf.compat.v1.train.get_global_step()) + 1
@@ -587,20 +612,7 @@ def main():
                 if gs % args.sample_every == 0:
                     generate_samples()
 
-                if args.val_every > 0 and (gs % args.val_every == 0 or gs == 1):
-                    validation()
-
-                if args.accumulate_gradients > 1:
-                    sess.run(opt_reset)
-                    for _ in range(args.accumulate_gradients):
-                        smpl_batch = sample_batch()
-                        sess.run(opt_compute, feed_dict={context: smpl_batch})
-                    (v_loss, v_summary) = sess.run((opt_apply, summaries))
-                else:
-                    smpl_batch = sample_batch()
-                    (_, v_loss, v_summary) = sess.run(
-                        (opt_apply, loss, summaries), feed_dict={context: smpl_batch},
-                    )
+                v_loss, v_summary = training_step()
 
                 summary_log.add_summary(v_summary, gs)
 
