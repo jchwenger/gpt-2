@@ -472,6 +472,14 @@ def main():
     def sample_batch():
         return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
 
+    def append_train_sample(msg, batch):
+        msg += " | Training on: "
+        smpl = enc.decode(smpl_batch[0]) if not args.reverse else enc.decode(smpl_batch[0][::-1])
+        # get tty width, https://stackoverflow.com/a/943921
+        columns = int(os.popen("stty size", "r").read().split()[1])
+        msg += smpl.replace("\n", " ")[: columns - len(msg) - 5] + "..."
+        return msg
+
     # ----------------------------------------
     # la session
 
@@ -490,7 +498,7 @@ def main():
         def save():
             maketree(os.path.join(CHECKPOINT_DIR, args.run_name))
             gs = sess.run(tf.compat.v1.train.get_global_step())
-            mod_path = os.path.join(CHECKPOINT_DIR, args.run_name, f"model")
+            mod_path = os.path.join(CHECKPOINT_DIR, args.run_name, "model")
             print(f"Saving {mod_path}-{gs}")
             saver.save(sess, mod_path, global_step=gs)
             with open(counter_path, "w") as o:
@@ -562,8 +570,10 @@ def main():
                         delete_previous_checkpoints()
                     except:
                         print("\u001b[31mUNABLE TO SAVE, FREE UP SOME MEMORY?\u001b[0m")
+
                 if gs % args.sample_every == 0:
                     generate_samples()
+
                 if args.val_every > 0 and (gs % args.val_every == 0 or gs == 1):
                     validation()
 
@@ -584,13 +594,8 @@ def main():
                 avg_loss = (avg_loss[0] * 0.9999 + v_loss, avg_loss[1] * 0.9999 + 1.0)
 
                 msg = f"[{gs} | {time.time() - start_time:2.2f}] loss={v_loss:2.2f} avg={avg_loss[0] / avg_loss[1]:2.2f} lr={sess.run(learning_rate)}"
-
                 if args.print_train_sample:
-                    msg += " | Training on: "
-                    smpl = enc.decode(smpl_batch[0]) if not args.reverse else enc.decode(smpl_batch[0][::-1])
-                    # get tty width, https://stackoverflow.com/a/943921
-                    columns = int(os.popen("stty size", "r").read().split()[1])
-                    msg += smpl.replace("\n", " ")[: columns - len(msg) - 5] + "..."
+                    msg = append_train_sample(msg, smpl_batch)
                 print(msg)
 
         except KeyboardInterrupt:
