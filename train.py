@@ -5,7 +5,6 @@
 import os
 import json
 import time
-import tqdm
 import regex
 import argparse
 import numpy as np
@@ -398,8 +397,12 @@ def main():
     # la compute
 
     def compute(context, validation=False):
-        if not validation:
-            context_in = randomize(context, hparams, args.noise) if args.noise else context
+        if validation:
+            context_in = context
+        else:
+            context_in = (
+                randomize(context, hparams, args.noise) if args.noise else context
+            )
         output = model.model(hparams=hparams, X=context_in)
         return tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -470,7 +473,7 @@ def main():
     print("Dataset has", data_sampler.total_size, "tokens")
 
     if args.val_every > 0:
-        if args.val_dataset:
+        if args.val_dataset is not None:
             val_chunks = load_dataset(
                 enc, args.val_dataset, args.combine, encoding=args.encoding
             )
@@ -480,17 +483,18 @@ def main():
         else:
             val_chunks = chunks
 
-    if args.val_every > 0:
         # Sample from validation set once with fixed seed to make
         # it deterministic during training as well as across runs.
         val_data_sampler = Sampler(val_chunks, seed=1)
-        val_batches = [
-            [val_data_sampler.sample(hparams.n_ctx) for _ in range(args.val_batch_size)]
-            for _ in range(args.val_batch_count)
-        ]
 
     def sample_batch():
         return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
+
+    def sample_val_batches():
+        return [
+            [val_data_sampler.sample(hparams.n_ctx) for _ in range(args.val_batch_size)]
+            for _ in range(args.val_batch_count)
+        ]
 
     # ----------------------------------------
     # la session
@@ -551,9 +555,8 @@ def main():
                 o.write("\n".join(all_text))
 
         def validation():
-            print("Calculating validation loss...")
             losses = []
-            for batch in tqdm.tqdm(val_batches):
+            for batch in sample_val_batches():
                 losses.append(sess.run(val_loss, feed_dict={val_context: batch}))
             v_val_loss = np.mean(losses)
             v_summary = sess.run(val_loss_summary, feed_dict={val_loss: v_val_loss})
