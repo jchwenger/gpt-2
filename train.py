@@ -520,7 +520,7 @@ def main():
             losses = []
             for batch in sample_val_batches():
                 losses.append(sess.run(val_loss, feed_dict={val_context: batch}))
-            v_val_loss = np.mean(losses)
+            v_val_loss = sess.run(tf.compat.v1.reduce_mean(losses))
             v_summary = sess.run(val_loss_summary, feed_dict={val_loss: v_val_loss})
             gs = sess.run(tf.compat.v1.train.get_global_step())
             summary_log.add_summary(v_summary, gs)
