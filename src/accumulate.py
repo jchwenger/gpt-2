@@ -30,7 +30,7 @@ class AccumulatingOptimizer(object):
         with tf.control_dependencies(updates):
             return tf.no_op()
 
-    def apply_gradients(self):
+    def apply_gradients(self, global_step=None):
         grads = [(g,v) for (v,g) in self.accum_vars.items()]
-        with tf.control_dependencies([self.opt.apply_gradients(grads)]):
+        with tf.control_dependencies([self.opt.apply_gradients(grads, global_step=global_step)]):
             return self.total_loss / self.count_loss

@@ -478,7 +478,7 @@ def main():
         opt = AccumulatingOptimizer(opt=opt, var_list=train_vars)
         opt_reset = opt.reset()
         opt_compute = opt.compute_gradients(loss)
-        opt_apply = opt.apply_gradients()
+        opt_apply = opt.apply_gradients(global_step=global_step)
         summary_loss = tf.compat.v1.summary.scalar("loss", opt_apply)
     else:
         if args.memory_saving_gradients:
