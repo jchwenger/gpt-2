@@ -56,10 +56,10 @@ def interact_model(
             "Can't get samples longer than window size: %s" % hparams.n_ctx
         )
 
-    with tf.Session(graph=tf.Graph()) as sess:
-        context = tf.placeholder(tf.int32, [batch_size, None])
+    with tf.compat.v1.Session(graph=tf.Graph()) as sess:
+        context = tf.compat.v1.placeholder(tf.int32, [batch_size, None])
         np.random.seed(seed)
-        tf.set_random_seed(seed)
+        tf.compat.v1.set_random_seed(seed)
         output = sample.sample_sequence(
             hparams=hparams,
             length=length,
@@ -70,7 +70,7 @@ def interact_model(
             top_p=top_p,
         )
 
-        saver = tf.train.Saver()
+        saver = tf.compat.v1.train.Saver()
         # if there's a checkpoint, load it
         if os.path.isdir("checkpoint") and run_name in os.listdir("checkpoint"):
             ckpt_path = os.path.join("checkpoint", run_name)
@@ -93,7 +93,7 @@ def interact_model(
                 out = sess.run(
                     output,
                     feed_dict={context: [context_tokens for _ in range(batch_size)]},
-                )[:, len(context_tokens) :]
+                ) # [:, len(context_tokens) :] # (uncomment to remove input from samples
                 for i in range(batch_size):
                     generated += 1
                     text = enc.decode(out[i])

@@ -53,9 +53,9 @@ def sample_model(
             "Can't get samples longer than window size: %s" % hparams.n_ctx
         )
 
-    with tf.Session(graph=tf.Graph()) as sess:
+    with tf.compat.v1.Session(graph=tf.Graph()) as sess:
         np.random.seed(seed)
-        tf.set_random_seed(seed)
+        tf.compat.v1.set_random_seed(seed)
 
         output = sample.sample_sequence(
             hparams=hparams,
@@ -67,7 +67,7 @@ def sample_model(
             top_p=top_p,
         )[:, 1:]
 
-        saver = tf.train.Saver()
+        saver = tf.compat.v1.train.Saver()
         # if there's a checkpoint, load it
         if os.path.isdir("checkpoint") and run_name in os.listdir("checkpoint"):
             ckpt = tf.train.latest_checkpoint(os.path.join("checkpoint", run_name))
