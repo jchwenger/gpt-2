@@ -5,6 +5,7 @@ import json
 import os
 import numpy as np
 import tensorflow as tf
+from datetime import datetime
 
 import model, sample, encoder
 
@@ -19,6 +20,7 @@ def sample_model(
     temperature=1,
     top_k=0,
     top_p=0.0,
+    save=False,
 ):
     """
     Run the sample_model
@@ -26,7 +28,7 @@ def sample_model(
     :seed=None : Integer seed for random number generators, fix seed to
      reproduce results
     :nsamples=0 : Number of samples to return, if 0, continues to
-     generate samples indefinately.
+     generate samples indefinitely.
     :batch_size=1 : Number of batches (only affects speed/memory).
     :length=None : Number of tokens in generated text, if None (default), is
      determined by model hyperparameters
@@ -75,14 +77,34 @@ def sample_model(
             ckpt = tf.train.latest_checkpoint(os.path.join("models", model_name))
         saver.restore(sess, ckpt)
 
+        if save:
+            sample_dir = os.path.join(
+                "./samples", run_name if run_name is not None else model_name
+            )
+            if not os.path.isdir(sample_dir):
+                os.makedirs(sample_dir)
+            out_path = os.path.join(
+                sample_dir,
+                f"unconditional-sample-{datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}.txt",
+            )
+
         generated = 0
         while nsamples == 0 or generated < nsamples:
             out = sess.run(output)
             for i in range(batch_size):
-                generated += batch_size
                 text = enc.decode(out[i])
-                print("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40)
+                print(f"{'=' * 40} SAMPLE {generated + i + 1} {'=' * 40}")
                 print(text)
+                if save:
+                    with open(out_path, "a") as o:
+                        o.write(f"{'=' * 40} SAMPLE {generated + i + 1} {'=' * 40}\n")
+                        o.write(text + "\n")
+            generated += batch_size
+
+        if save:
+            print("-" * 40)
+            print(f"(saved sample(s) to: {out_path})")
+
 
 
 if __name__ == "__main__":
