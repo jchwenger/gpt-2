@@ -42,6 +42,7 @@ def sample_model(
      special setting meaning no restrictions. 40 generally is a good value.
     :top_p=0.0 : Float value controlling diversity. Implements nucleus sampling,
      overriding top_k if set to a value > 0. A good setting is 0.9.
+    :save=False : save samples to a datetimed file in ./samples/run_name.
     """
     enc = encoder.get_encoder(model_name, "models")
     hparams = model.default_hparams()
@@ -78,9 +79,7 @@ def sample_model(
         saver.restore(sess, ckpt)
 
         if save:
-            sample_dir = os.path.join(
-                "./samples", run_name if run_name is not None else model_name
-            )
+            sample_dir = os.path.join("./samples", run_name)
             if not os.path.isdir(sample_dir):
                 os.makedirs(sample_dir)
             out_path = os.path.join(
@@ -96,7 +95,7 @@ def sample_model(
                 print(f"{'=' * 40} SAMPLE {generated + i + 1} {'=' * 40}")
                 print(text)
                 if save:
-                    with open(out_path, "a") as o:
+                    with open(out_path, "a", encoding="utf-8") as o:
                         o.write(f"{'=' * 40} SAMPLE {generated + i + 1} {'=' * 40}\n")
                         o.write(text + "\n")
             generated += batch_size
