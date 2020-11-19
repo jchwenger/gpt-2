@@ -7,8 +7,7 @@ import argparse
 import numpy as np
 
 import encoder
-import encoder_sp
-import encoder_hug
+
 from load_dataset import load_dataset
 
 parser = argparse.ArgumentParser(
@@ -79,6 +78,7 @@ def main():
     if args.encoder == "default":
         enc = encoder.get_encoder(args.model_name, "models", args.special_tokens)
     elif args.encoder == "sentencepiece":
+        import encoder_sp
         try:
             enc = encoder_sp.get_encoder(args.model_name, "models")
         except Exception as e:
@@ -86,6 +86,7 @@ def main():
             print(e)
             exit("The SentencePiece model is not given by default by OpenAI. Try generate a new one using new_sp_model.py.")
     elif args.encoder == "huggingface":
+        import encoder_hug
         enc = encoder_hug.get_encoder(args.model_name, "models")
         if args.special_tokens:
             enc.tok.add_special_tokens(args.special_tokens)
