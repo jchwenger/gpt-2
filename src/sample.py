@@ -83,9 +83,9 @@ def sample_sequence(
                 temperature, next_outputs["logits"].dtype
             )
             logits = tf.cond(
-                tf.math.greater(top_k, 0),
-                lambda: top_k_logits(logits, k=top_k),
+                tf.math.greater(top_p, 0.0),
                 lambda: top_p_logits(logits, p=top_p),
+                lambda: top_k_logits(logits, k=top_k),
             )
             samples = tf.random.categorical(logits, num_samples=1, dtype=tf.int32)
             return [
