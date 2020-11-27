@@ -84,7 +84,7 @@ def sample_model(
                 os.makedirs(sample_dir)
             out_path = os.path.join(
                 sample_dir,
-                f"unconditional-sample-{datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}.txt",
+                f"unconditional-sample-t_{temperature}-topk_{top_k}-topp_{top_p}-{datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}.txt",
             )
 
         generated = 0
